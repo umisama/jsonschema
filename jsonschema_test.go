@@ -161,6 +161,111 @@ var TestCasesExampleData = map[string]TestCaseExampleData{
 		}`,
 		true,
 	},
+	"#3a": TestCaseExampleData{
+		`{
+			"id": 1,
+			"name": "A green door",
+			"tags": ["home", "green"]
+		}`,
+		`{
+			"$schema": "http://json-schema.org/draft-04/schema#",
+			"title": "Product",
+			"description": "A product from Acme's catalog",
+			"type": "object",
+			"properties": {
+				"id": {
+					"description": "The unique identifier for a product",
+					"type": "integer"
+				},
+				"name": {
+					"description": "Name of the product",
+					"type": "string"
+				},
+				"price": {
+					"type": "number",
+					"minimum": 0,
+					"exclusiveMinimum": true
+				},
+				"tags": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"minItems": 1,
+					"uniqueItems": true
+				}
+			},
+			"required": ["id", "name", "price"]
+		}`,
+		false,
+	},
+	"#3b": TestCaseExampleData{
+		`{
+			"price": 12.50
+		}`,
+		`{
+			"$schema": "http://json-schema.org/draft-04/schema#",
+			"title": "Product",
+			"description": "A product from Acme's catalog",
+			"type": "object",
+			"properties": {
+				"price": {
+					"type": "number",
+					"minimum": 0,
+					"exclusiveMinimum": true
+				}
+			}
+		}`,
+		true,
+	},
+	"#3c": TestCaseExampleData{
+		`{
+			"price": 12.50
+		}`,
+		`{
+			"type": "object",
+			"properties": {
+				"price": {
+					"type": "number",
+					"minimum": 15,
+					"exclusiveMinimum": true
+				}
+			}
+		}`,
+		false,
+	},
+	"#3d": TestCaseExampleData{
+		`{
+			"price": 12
+		}`,
+		`{
+			"type": "object",
+			"properties": {
+				"price": {
+					"type": "number",
+					"minimum": 12,
+					"exclusiveMinimum": true
+				}
+			}
+		}`,
+		false,
+	},
+	"#3e": TestCaseExampleData{
+		`{
+			"price": 12
+		}`,
+		`{
+			"type": "object",
+			"properties": {
+				"price": {
+					"type": "number",
+					"minimum": 12,
+					"exclusiveMinimum": false
+				}
+			}
+		}`,
+		true,
+	},
 }
 
 func Test_JsonType_String(t *testing.T) {

@@ -46,6 +46,7 @@ func (v *Validator) isValid(sc *schemaObject, obj interface{}) bool {
 	validators := []func(*schemaObject, interface{}) bool{
 		v.isTypeValid,
 		v.isRequiredValid,
+		v.isMinimumValueValid,
 		v.isChildsValid,
 	}
 
@@ -98,6 +99,21 @@ func (v *Validator) isChildsValid(sc *schemaObject, obj interface{}) bool {
 					return false
 				}
 			}
+		}
+	}
+	return true
+}
+
+func (v *Validator) isMinimumValueValid(sc *schemaObject, obj interface{}) bool {
+	if sc.minimum.enable {
+		if val, ok := obj.(float64); ok {
+			if sc.minimum.exclusiveMinimum {
+				return (sc.minimum.value < val)
+			}else {
+				return (sc.minimum.value <= val)
+			}
+		} else {
+			return false
 		}
 	}
 	return true

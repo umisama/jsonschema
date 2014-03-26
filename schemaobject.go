@@ -1,16 +1,25 @@
 package jsonschema
 
+type subschema_minimum struct {
+	enable           bool
+	exclusiveMinimum bool
+	value            float64
+}
+
 type schemaObject struct {
 	schema, title, ref, description string
 	jsontype                        JsonType
 	required                        []string
 	child                           map[string]*schemaObject
+	minimum                         *subschema_minimum
 }
 
 func NewSchemaObject() *schemaObject {
 	return &schemaObject{
 		child:    make(map[string]*schemaObject),
 		required: make([]string, 0),
+		jsontype: SchemaType_Unknown,
+		minimum:  &subschema_minimum{false, false, 0},
 	}
 }
 
@@ -22,6 +31,7 @@ func (s *schemaObject) ParseJsonSchema(json map[string]interface{}) (err error) 
 		s.setDescription,
 		s.setJsonType,
 		s.setRequired,
+		s.setMinimum,
 		s.setChilds,
 	}
 
@@ -106,5 +116,20 @@ func (s *schemaObject) setChilds(obj map[string]interface{}) error {
 			s.child["item"] = news
 		}
 	}
+	return nil
+}
+
+func (s *schemaObject) setMinimum(obj map[string]interface{}) error {
+	if v, ok := obj["minimum"].(float64); ok {
+		s.minimum.enable = true
+		s.minimum.value = v
+	} else {
+		return nil
+	}
+
+	if v, ok := obj["exclusiveMinimum"].(bool); ok {
+		s.minimum.exclusiveMinimum = v
+	}
+
 	return nil
 }
