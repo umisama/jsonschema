@@ -3,14 +3,14 @@ package jsonschema
 type schemaObject struct {
 	schema, title, ref, description string
 	jsontype                        JsonType
-	required                        []interface{}
+	required                        []string
 	child                           map[string]*schemaObject
 }
 
 func NewSchemaObject() *schemaObject {
 	return &schemaObject{
 		child:    make(map[string]*schemaObject),
-		required: make([]interface{}, 0),
+		required: make([]string, 0),
 	}
 }
 
@@ -78,7 +78,12 @@ func (s *schemaObject) setJsonType(obj map[string]interface{}) (err error) {
 }
 
 func (s *schemaObject) setRequired(obj map[string]interface{}) error {
-	s.required, _ = obj["required"].([]interface{})
+	req_raw, _ := obj["required"].([]interface{})
+	for _, v := range req_raw {
+		if req, ok := v.(string); ok {
+			s.required = append(s.required, req)
+		}
+	}
 	return nil
 }
 

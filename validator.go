@@ -39,51 +39,66 @@ func (v *Validator) IsValid(jsonstr []byte) bool {
 		return false
 	}
 
-	result := true
-	var check func(*schemaObject, interface{})
-	check = func(sc *schemaObject, obj interface{}) {
-		// validation type
-		if !sc.jsontype.IsMatched(obj) {
-			result = false
-			return
-		}
-
-		// check required
-		for _, v := range sc.required {
-			prop, _ := obj.(map[string]interface{})
-			_, ok := prop[v.(string)]
-			if !ok {
-				result = false
-				return
-			}
-		}
-
-		// go next if array or object
-		switch sc.jsontype {
-		case JsonType_Object:
-			prop, _ := obj.(map[string]interface{})
-			for k, v := range prop {
-				c, ok := sc.child[k]
-				if ok {
-					check(c, v)
-				}
-			}
-		case JsonType_Array:
-			array, _ := obj.([]interface{})
-			for _, v := range array {
-				c, ok := sc.child["item"]
-				if ok {
-					check(c, v)
-				}
-			}
-		}
-		return
-	}
-	check(v.schema, jsonobj)
-
-	return result
+	return v.isValid(v.schema, jsonobj)
 }
 
-func (v *Validator) isTypeValid() {
-	return
+func (v *Validator) isValid(sc *schemaObject, obj interface{}) bool {
+	validators := []func(*schemaObject, interface{}) bool{
+		v.isTypeValid,
+		v.isRequiredValid,
+		v.isChildsValid,
+	}
+
+	for _, fn := range validators {
+		if !fn(sc, obj) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (v *Validator) isTypeValid(sc *schemaObject, obj interface{}) bool {
+	return sc.jsontype.IsMatched(obj)
+}
+
+func (v *Validator) isRequiredValid(sc *schemaObject, obj interface{}) bool {
+	switch sc.jsontype {
+	case JsonType_Object:
+		prop, _ := obj.(map[string]interface{})
+		for _, v := range sc.required {
+			_, ok := prop[v]
+			if !ok {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (v *Validator) isChildsValid(sc *schemaObject, obj interface{}) bool {
+	switch sc.jsontype {
+	case JsonType_Object:
+		prop, _ := obj.(map[string]interface{})
+		for k, item := range prop {
+			c, ok := sc.child[k]
+			if ok {
+				if !v.isValid(c, item) {
+					return false
+				}
+			}
+		}
+	case JsonType_Array:
+		array, _ := obj.([]interface{})
+		for _, item := range array {
+			c, ok := sc.child["item"]
+			if ok {
+				if !v.isValid(c, item) {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
