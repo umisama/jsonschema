@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	ErrInvalidTypeName = errors.New("jsonschema: invalid type name")
+	ErrInvalidTypeName      = errors.New("jsonschema: invalid type name")
 	ErrInvalidSchemaVersion = errors.New("jsonschema: invalid type name")
 )
 
@@ -19,8 +19,8 @@ const (
 	SchemaType_Unknown  = "unknown"
 )
 
-func GetSchemaType(typestr string)(t SchemaType) {
-	types := []SchemaType {
+func GetSchemaType(typestr string) (t SchemaType) {
+	types := []SchemaType{
 		SchemaType_Draft3,
 		SchemaType_Draft4,
 		SchemaType_Standard,
@@ -34,7 +34,7 @@ func GetSchemaType(typestr string)(t SchemaType) {
 	return SchemaType_Unknown
 }
 
-func(s SchemaType) String() string {
+func (s SchemaType) String() string {
 	return string(s)
 }
 
@@ -50,6 +50,7 @@ const (
 	JsonType_Array   = JsonType("array")
 	JsonType_Object  = JsonType("object")
 	JsonType_Null    = JsonType("null")
+	JsonType_Any     = JsonType("any")
 	JsonType_INVALID = JsonType("system-Invalid")
 )
 
@@ -79,6 +80,8 @@ func (j JsonType) String() string {
 
 func (j JsonType) IsMatched(v interface{}) (ret bool) {
 	switch j {
+	case JsonType_Any:
+		ret = true
 	case JsonType_Array:
 		_, ret = v.([]interface{})
 	case JsonType_Bool:

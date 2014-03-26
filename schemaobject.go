@@ -18,7 +18,7 @@ func NewSchemaObject() *schemaObject {
 	return &schemaObject{
 		child:    make(map[string]*schemaObject),
 		required: make([]string, 0),
-		jsontype: SchemaType_Unknown,
+		jsontype: JsonType_Any,
 		minimum:  &subschema_minimum{false, false, 0},
 	}
 }
@@ -110,7 +110,7 @@ func (s *schemaObject) setChilds(obj map[string]interface{}) error {
 			}
 		}
 	case JsonType_Array:
-		if item, ok := obj["item"].(map[string]interface{}); ok {
+		if item, ok := obj["items"].(map[string]interface{}); ok {
 			news := NewSchemaObject()
 			news.ParseJsonSchema(item)
 			s.child["item"] = news
