@@ -23,45 +23,8 @@ func NewValidator(schema []byte) (v *Validator, err error) {
 }
 
 func (v *Validator) parseSchema(json map[string]interface{}) (schema *schemaObject, err error) {
-
-	schema = &schemaObject{}
-	var load func(shm *schemaObject, jsonobj map[string]interface{}) (err error)
-	load = func(shm *schemaObject, jsonobj map[string]interface{}) (err error) {
-		shm.child = make(map[string]*schemaObject)
-		shm.title, _ = jsonobj["title"].(string)
-		shm.schema, _ = jsonobj["$schema"].(string)
-		shm.description, _ = jsonobj["description"].(string)
-		shm.required, _ = jsonobj["required"].([]interface{})
-
-		jsontype, _ := jsonobj["type"].(string)
-		shm.jsontype, err = GetJsonType(jsontype)
-		if err != nil {
-			return
-		}
-
-		switch shm.jsontype {
-		case JsonType_Object:
-			if props, ok := jsonobj["properties"].(map[string]interface{}); ok {
-				for k, p := range props {
-					if ip, ok := p.(map[string]interface{}); ok {
-						nextsch := &schemaObject{}
-						load(nextsch, ip)
-						shm.child[k] = nextsch
-					}
-				}
-			}
-		case JsonType_Array:
-			if item, ok := json["item"].(map[string]interface{}); ok {
-				nextsch := &schemaObject{}
-				load(nextsch, item)
-				shm.child["item"] = nextsch
-			}
-		}
-
-		return
-	}
-
-	err = load(schema, json)
+	schema = NewSchemaObject()
+	err = schema.ParseJsonSchema(json)
 	if err != nil {
 		return
 	}
@@ -80,7 +43,7 @@ func (v *Validator) IsValid(jsonstr []byte) bool {
 	var check func(*schemaObject, interface{})
 	check = func(sc *schemaObject, obj interface{}) {
 		// validation type
-		if !sc.jsontype.IsValidType(obj) {
+		if !sc.jsontype.IsMatched(obj) {
 			result = false
 			return
 		}
@@ -119,4 +82,8 @@ func (v *Validator) IsValid(jsonstr []byte) bool {
 	check(v.schema, jsonobj)
 
 	return result
+}
+
+func (v *Validator) isTypeValid() {
+	return
 }
