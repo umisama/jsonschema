@@ -1,8 +1,13 @@
 package jsonschema
 
 import (
+	"encoding/json"
 	"errors"
+	"github.com/umisama/jsonptr"
+	"io/ioutil"
 	"math"
+	"net/http"
+	"strings"
 )
 
 var (
@@ -103,5 +108,70 @@ func (j JsonType) IsMatched(v interface{}) (ret bool) {
 		ret = false
 	}
 
+	return
+}
+
+type referenceResolver struct {
+	cache map[string]*schemaObject
+	raw   []byte
+}
+
+func NewReferenceResolver(raw []byte) *referenceResolver {
+	return &referenceResolver{
+		cache: make(map[string]*schemaObject),
+		raw:   raw,
+	}
+}
+
+func (r *referenceResolver) DoResolve(path string) (s *schemaObject, err error) {
+	if s, ok := r.cache[path]; ok {
+		return s, nil
+	}
+
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		s, err = r.doResolveWithHttp(path)
+	} else {
+		s, err = r.doResolveWithJsonPtr(path)
+	}
+
+	return
+}
+
+func (r *referenceResolver) doResolveWithHttp(url string) (s *schemaObject, err error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return
+	}
+
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+
+	jsonobj := make(map[string]interface{})
+	err = json.Unmarshal(buf, &jsonobj)
+	if err != nil {
+		return
+	}
+
+	s = NewSchemaObject(nil, r)
+	err = s.ParseJsonSchema(jsonobj)
+	return
+}
+
+func (r *referenceResolver) doResolveWithJsonPtr(path string) (s *schemaObject, err error) {
+	raw, err := jsonptr.Find(r.raw, path)
+	if err != nil {
+		return
+	}
+
+	jsonobj := make(map[string]interface{})
+	err = json.Unmarshal(raw, &jsonobj)
+	if err != nil {
+		return
+	}
+
+	s = NewSchemaObject(nil, r)
+	err = s.ParseJsonSchema(jsonobj)
 	return
 }

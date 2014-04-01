@@ -5,11 +5,16 @@ import (
 )
 
 type Validator struct {
-	schema *schemaObject
+	raw         []byte
+	schema      *schemaObject
+	refResolver *referenceResolver
 }
 
 func NewValidator(schema []byte) (v *Validator, err error) {
-	v = new(Validator)
+	v = &Validator{
+		raw:         schema,
+		refResolver: NewReferenceResolver(schema),
+	}
 
 	schema_raw := make(map[string]interface{})
 	err = json.Unmarshal(schema, &schema_raw)
@@ -18,12 +23,11 @@ func NewValidator(schema []byte) (v *Validator, err error) {
 	}
 
 	v.schema, err = v.parseSchema(schema_raw)
-
 	return
 }
 
 func (v *Validator) parseSchema(json map[string]interface{}) (schema *schemaObject, err error) {
-	schema = NewSchemaObject()
+	schema = NewSchemaObject(nil, v.refResolver)
 	err = schema.ParseJsonSchema(json)
 	if err != nil {
 		return
@@ -83,7 +87,7 @@ func (v *Validator) isChildsValid(sc *schemaObject, obj interface{}) bool {
 	case JsonType_Object:
 		prop, _ := obj.(map[string]interface{})
 		for k, item := range prop {
-			c, ok := sc.child[k]
+			c, ok := sc.childs[k]
 			if ok {
 				if !v.isValid(c, item) {
 					return false
@@ -93,7 +97,7 @@ func (v *Validator) isChildsValid(sc *schemaObject, obj interface{}) bool {
 	case JsonType_Array:
 		array, _ := obj.([]interface{})
 		for _, item := range array {
-			c, ok := sc.child["item"]
+			c, ok := sc.childs["item"]
 			if ok {
 				if !v.isValid(c, item) {
 					return false
@@ -109,7 +113,7 @@ func (v *Validator) isMinimumValueValid(sc *schemaObject, obj interface{}) bool 
 		if val, ok := obj.(float64); ok {
 			if sc.minimum.exclusiveMinimum {
 				return (sc.minimum.value < val)
-			}else {
+			} else {
 				return (sc.minimum.value <= val)
 			}
 		} else {

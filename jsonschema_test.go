@@ -344,7 +344,211 @@ var TestCasesExampleData = map[string]TestCaseExampleData{
 			}
 		}`,
 		true,
-		},
+	},
+	"#4a": TestCaseExampleData{
+		`[
+			{
+				"id": 2,
+				"name": "An ice sculpture",
+				"price": 12.50,
+				"tags": ["cold", "ice"],
+				"dimensions": {
+					"length": 7.0,
+					"width": 12.0,
+					"height": 9.5
+				},
+				"warehouseLocation": {
+					"latitude": -78.75,
+					"longitude": 20.4
+				}
+			},
+			{
+				"id": 3,
+				"name": "A blue mouse",
+				"price": 25.50,
+				"dimensions": {
+					"length": 3.1,
+					"width": 1.0,
+					"height": 1.0
+				},
+				"warehouseLocation": {
+					"latitude": 54.4,
+					"longitude": -32.7
+				}
+			}
+		]`,
+		`{
+			"$schema": "http://json-schema.org/draft-04/schema#",
+			"title": "Product set",
+			"type": "array",
+			"items": {
+				"title": "Product",
+				"type": "object",
+				"properties": {
+					"id": {
+						"description": "The unique identifier for a product",
+						"type": "number"
+					},
+					"name": {
+						"type": "string"
+					},
+					"price": {
+						"type": "number",
+						"minimum": 0,
+						"exclusiveMinimum": true
+					},
+					"tags": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"minItems": 1,
+						"uniqueItems": true
+					},
+					"dimensions": {
+						"type": "object",
+						"properties": {
+							"length": {"type": "number"},
+							"width": {"type": "number"},
+							"height": {"type": "number"}
+						},
+						"required": ["length", "width", "height"]
+					},
+					"warehouseLocation": {
+						"description": "Coordinates of the warehouse with the product",
+						"$ref": "http://json-schema.org/geo"
+					}
+				},
+				"required": ["id", "name", "price"]
+			}
+		}`,
+		true,
+	},
+	"#4b": TestCaseExampleData{
+		`[
+			{
+				"warehouseLocation": {
+					"latitude": "hello",
+					"longitude": -32.7
+				}
+			}
+		]`,
+		`{
+			"$schema": "http://json-schema.org/draft-04/schema#",
+			"title": "Product set",
+			"type": "array",
+			"items": {
+				"title": "Product",
+				"type": "object",
+				"properties": {
+					"warehouseLocation": {
+						"description": "Coordinates of the warehouse with the product",
+						"$ref": "http://json-schema.org/geo"
+					}
+				}
+			}
+		}`,
+		false,
+	},
+	"#5": TestCaseExampleData{
+		`{
+			"storage": {
+				"type": "disk",
+				"device": "/dev/sda1"
+			},
+			"fstype": "btrfs",
+			"readonly": true
+		}`,
+		`{
+			"type": "object",
+			"required": [ "storage" ],
+			"properties": {
+				"storage": {
+					"$ref": "#/definitions/diskDevice"
+				}
+			},
+			"definitions": {
+				"diskDevice": {
+					"type" : "object",
+					"properties": {
+						"type": { "enum": [ "disk" ] },
+						"device": {
+							"type": "string",
+							"pattern": "^/dev/[^/]+(/[^/]+)*$"
+						}
+					},
+					"required": [ "type", "device" ]
+				}
+			}
+		}`,
+		true,
+	},
+	"#5a": TestCaseExampleData{
+		`{
+			"storage": {
+				"type": "disk",
+				"device": 1
+			},
+			"fstype": "btrfs",
+			"readonly": true
+		}`,
+		`{
+			"type": "object",
+			"required": [ "storage" ],
+			"properties": {
+				"storage": {
+					"$ref": "#/definitions/diskDevice"
+				}
+			},
+			"definitions": {
+				"diskDevice": {
+					"type" : "object",
+					"properties": {
+						"type": { "enum": [ "disk" ] },
+						"device": {
+							"type": "string",
+							"pattern": "^/dev/[^/]+(/[^/]+)*$"
+						}
+					},
+					"required": [ "type", "device" ]
+				}
+			}
+		}`,
+		false,
+	},
+	"#6": TestCaseExampleData{
+		`{
+			"storage": {
+				"type": "disk",
+				"device": 1
+			},
+			"fstype": "btrfs",
+			"readonly": true
+		}`,
+		`{
+			"type": "object",
+			"required": [ "storage" ],
+			"properties": {
+				"storage": {
+					"$ref": "#/definitions/diskDevice"
+				}
+			},
+			"definitions": {
+				"diskDevice": {
+					"type" : "object",
+					"properties": {
+						"type": { "enum": [ "disk" ] },
+						"device": {
+							"type": "string",
+							"pattern": "^/dev/[^/]+(/[^/]+)*$"
+						}
+					},
+					"required": [ "type", "device" ]
+				}
+			}
+		}`,
+		false,
+	},
 }
 
 func Test_JsonType_String(t *testing.T) {

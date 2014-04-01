@@ -10,16 +10,21 @@ type schemaObject struct {
 	schema, title, ref, description string
 	jsontype                        JsonType
 	required                        []string
-	child                           map[string]*schemaObject
+	childs                          map[string]*schemaObject
+	pattern_childs					map[string]*schemaObject
+	mother                          *schemaObject
 	minimum                         *subschema_minimum
+	raw                             map[string]interface{}
+	refResolver                     *referenceResolver
 }
 
-func NewSchemaObject() *schemaObject {
+func NewSchemaObject(mother *schemaObject, refResolver *referenceResolver) *schemaObject {
 	return &schemaObject{
-		child:    make(map[string]*schemaObject),
-		required: make([]string, 0),
-		jsontype: JsonType_Any,
-		minimum:  &subschema_minimum{false, false, 0},
+		childs:      make(map[string]*schemaObject),
+		required:    make([]string, 0),
+		jsontype:    JsonType_Any,
+		minimum:     &subschema_minimum{false, false, 0},
+		refResolver: refResolver,
 	}
 }
 
@@ -66,7 +71,14 @@ func (s *schemaObject) setTitle(obj map[string]interface{}) error {
 }
 
 func (s *schemaObject) setRef(obj map[string]interface{}) error {
-	s.ref, _ = obj["ref"].(string)
+	ref, ok := obj["$ref"].(string)
+	if ok {
+		child, err := s.refResolver.DoResolve(ref)
+		if err != nil {
+			return err
+		}
+		*s = *child
+	}
 	return nil
 }
 
@@ -100,20 +112,32 @@ func (s *schemaObject) setRequired(obj map[string]interface{}) error {
 func (s *schemaObject) setChilds(obj map[string]interface{}) error {
 	switch s.jsontype {
 	case JsonType_Object:
+		// properties
 		if props, ok := obj["properties"].(map[string]interface{}); ok {
 			for k, p := range props {
 				if ip, ok := p.(map[string]interface{}); ok {
-					news := NewSchemaObject()
+					news := NewSchemaObject(s, s.refResolver)
 					news.ParseJsonSchema(ip)
-					s.child[k] = news
+					s.childs[k] = news
+				}
+			}
+		}
+
+		// properties with regexp
+		if props, ok := obj["patternProperties"].(map[string]interface{}); ok {
+			for k, p := range props {
+				if ip, ok := p.(map[string]interface{}); ok {
+					news := NewSchemaObject(s, s.refResolver)
+					news.ParseJsonSchema(ip)
+					s.pattern_childs[k] = news
 				}
 			}
 		}
 	case JsonType_Array:
 		if item, ok := obj["items"].(map[string]interface{}); ok {
-			news := NewSchemaObject()
+			news := NewSchemaObject(s, s.refResolver)
 			news.ParseJsonSchema(item)
-			s.child["item"] = news
+			s.childs["item"] = news
 		}
 	}
 	return nil
