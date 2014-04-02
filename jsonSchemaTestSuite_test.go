@@ -8,13 +8,32 @@ import (
 	"testing"
 )
 
+type TestSelector []string
+
+var testlist = TestSelector{
+	"remote ref",
+	"fragment within remote ref",
+	"ref within remote ref",
+	"change resolution scope",
+}
+
+func (s TestSelector) IsSkip(str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
 type TestSuiteSchema struct {
 	Description string                 `json:"description"`
 	Schema      map[string]interface{} `json:"schema"`
 	Tests       []struct {
-		Description string      `json:"description"`
-		Data        interface{} `json:"data"`
-		Valid       bool        `json:"valid"`
+		Description string          `json:"description"`
+		Data        json.RawMessage `json:"data"`
+		Valid       bool            `json:"valid"`
 	} `json:"tests"`
 }
 
@@ -66,18 +85,43 @@ func loadTestCases(t *testing.T, dir string) (testcases []TestSuiteSchema, err e
 }
 
 func Test_jsonSchemaTestSuiteDraft4(t *testing.T) {
-	t.Skip("now skip")
-	cases, err := loadTestCases(t, "./test/tests/draft4")
+	cases, err := loadTestCases(t, "./jsonSchemaTestSuite/tests/draft4")
 	if err != nil {
 		return
 	}
 
-	count := 0
+	case_count, fail_count, skip_count := 0, 0, 0
 	for _, v := range cases {
-		count = count + v.Count()
-	}
-	t.Log("load", count, "cases")
+		if !testlist.IsSkip(v.Description) {
+			case_count = case_count + v.Count()
+			validator, err := newValidator(v.Schema)
+			if err != nil {
+				t.Error("fail on (", v.Description, ") with", err)
+				continue
+			}
 
+			for ki, vi := range v.Tests {
+				valid, err := validator.IsValid(vi.Data)
+				if err != nil {
+					fail_count = fail_count + 1
+					t.Error("fail on (", v.Description, ") -", ki, "with", err)
+					continue
+				}
+
+				if valid != vi.Valid {
+					fail_count = fail_count + 1
+					t.Error("fail on (", v.Description, ") -", ki)
+					continue
+				}
+			}
+		} else {
+			skip_count = skip_count + 1
+			t.Log("skipped:", v.Description)
+		}
+	}
+
+	t.Log("fail count:", fail_count, "/", case_count, "cases")
+	t.Log("skip count:", skip_count)
 
 	return
 }
