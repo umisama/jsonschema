@@ -8,7 +8,7 @@ type schemaPropertySub interface {
 	IsValid(interface{}) bool
 }
 
-// defined 5.1.2. / 5.1.3. (@Validation)
+// defined 5.1.3.(@Validation)
 type schemaPropertySub_minimum struct {
 	minimum          float64
 	exclusiveMinimum bool
@@ -65,6 +65,7 @@ func (s *schemaPropertySub_minimum) IsValid(src interface{}) bool {
 	return false
 }
 
+// defined 5.1.2.(@Validation)
 type schemaPropertySub_maximum struct {
 	maximum          float64
 	exclusiveMaximum bool
