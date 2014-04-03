@@ -46,198 +46,6 @@ func (s *schemaObject) String() string {
 	return fmt.Sprintf("%#v", pretty.Formatter(s))
 }
 
-type schemaPropertySub interface {
-	Set(map[string]interface{}) error
-	IsValid(interface{}) bool
-}
-
-// defined 5.1.2. / 5.1.3. (@Validation)
-type schemaPropertySub_range struct {
-	isSetMaximum bool
-	isSetMinimum bool
-
-	maximum float64
-	minimum float64
-
-	exclusiveMaximum bool
-	exclusiveMinimum bool
-}
-
-func (s *schemaPropertySub_range) Set(schema map[string]interface{}) error {
-	err := s.setMaximum(schema)
-	if err != nil {
-		return err
-	}
-
-	err = s.setMinimum(schema)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// recognize "maximum" and "exclusiveMaximum"
-func (s *schemaPropertySub_range) setMaximum(schema map[string]interface{}) error {
-	max_raw, max_exist := schema["maximum"]
-	excMax_raw, excMax_exist := schema["exclusiveMaximum"]
-
-	if excMax_exist && !max_exist {
-		// If "exclusiveMaximum" is present, "maximum" MUST also be present.
-		return ErrInvalidSchemaFormat
-	}
-
-	if max_exist {
-		s.isSetMaximum = true
-
-		ok := false
-		s.maximum, ok = max_raw.(float64)
-		if !ok {
-			// must JSON number
-			return ErrInvalidSchemaFormat
-		}
-	} else {
-		s.isSetMaximum = false
-	}
-
-	if excMax_exist {
-		ok := false
-		s.exclusiveMaximum, ok = excMax_raw.(bool)
-		if !ok {
-			// must boolean
-			return ErrInvalidSchemaFormat
-		}
-	} else {
-		s.exclusiveMaximum = false
-	}
-
-	return nil
-}
-
-// recognize "minimum" and "exclusiveMinimum"
-func (s *schemaPropertySub_range) setMinimum(schema map[string]interface{}) error {
-	min_raw, min_exist := schema["minimum"]
-	excMin_raw, excMin_exist := schema["exclusiveMinimum"]
-
-	if excMin_exist && !min_exist {
-		// If "exclusiveMaximum" is present, "maximum" MUST also be present.
-		return ErrInvalidSchemaFormat
-	}
-
-	if min_exist {
-		s.isSetMinimum = true
-
-		ok := false
-		s.minimum, ok = min_raw.(float64)
-		if !ok {
-			// must JSON number.
-			return ErrInvalidSchemaFormat
-		}
-	} else {
-		s.isSetMinimum = false
-	}
-
-	if excMin_exist {
-		ok := false
-		s.exclusiveMinimum, ok = excMin_raw.(bool)
-		if !ok {
-			// must boolean.
-			return ErrInvalidSchemaFormat
-		}
-	} else {
-		s.exclusiveMinimum = false
-	}
-
-	return nil
-}
-
-func (s *schemaPropertySub_range) IsValid(src interface{}) bool {
-	val, ok := src.(float64)
-	if !ok {
-		return true
-	}
-
-	valid := s.isMaximumValid(val)
-	if !valid {
-		return false
-	}
-
-	valid = s.isMinimumValid(val)
-	if !valid {
-		return false
-	}
-
-	return true
-}
-
-func (s *schemaPropertySub_range) isMaximumValid(val float64) bool {
-	if !s.isSetMaximum {
-		return true
-	}
-
-	switch s.exclusiveMaximum {
-	case true:
-		return val < s.maximum
-	case false:
-		return val <= s.maximum
-	}
-
-	return false
-}
-
-func (s *schemaPropertySub_range) isMinimumValid(val float64) bool {
-	if !s.isSetMinimum {
-		return true
-	}
-
-	switch s.exclusiveMinimum {
-	case true:
-		return val > s.minimum
-	case false:
-		return val >= s.minimum
-	}
-
-	return false
-}
-
-type schemaPropertySub_maxProperties struct {
-	setted bool
-	value  int
-}
-
-// defined 5.4.1. (@Validation)
-func (s *schemaPropertySub_maxProperties) Set(schema map[string]interface{}) error {
-	prop_raw, prop_exist := schema["maxProperties"]
-
-	if prop_exist {
-		s.setted = true
-
-		val_float, ok := prop_raw.(float64)
-		if !ok {
-			return ErrInvalidSchemaFormat
-		}
-
-		if math.Mod(val_float, 1) != 0 {
-			return ErrInvalidSchemaFormat
-		}
-
-		s.value = int(val_float)
-	} else {
-		s.setted = false
-	}
-
-	return nil
-}
-
-func (s *schemaPropertySub_maxProperties) IsValid(src interface{}) bool {
-	obj, ok := src.(map[string]interface{})
-	if !s.setted || !ok {
-		return true
-	}
-
-	return len(obj) <= s.value
-}
-
 // schemaProperty reprecents a property of jsonschema.
 type schemaProperty struct {
 	mother       *schemaProperty
@@ -250,9 +58,7 @@ type schemaProperty struct {
 	patternChilds map[string]*schemaProperty
 	items         []*schemaProperty
 	isItemsOne    bool
-
-	sub_range   *schemaPropertySub_range         //maximum / minimum
-	sub_maxProp *schemaPropertySub_maxProperties //maxPoperties
+	subprop_list  []schemaPropertySub
 
 	isSetMaxLength bool
 	maxLength      int
@@ -316,8 +122,7 @@ func newSchemaProperty(mother *schemaProperty, schema *schemaObject, original st
 		enum:                      make([]interface{}, 0),
 		dependency:                make(map[string][]string),
 		dependencySchema:          make(map[string]*schemaProperty),
-		sub_range:                 &schemaPropertySub_range{},
-		sub_maxProp:               &schemaPropertySub_maxProperties{},
+		subprop_list:              make([]schemaPropertySub, 0),
 	}
 }
 
@@ -332,11 +137,9 @@ func (s *schemaProperty) NewBrother() *schemaProperty {
 func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 	fnlist := []func(map[string]interface{}) error{
 		s.SetRef,
-		s.SetRange,
 		s.SetJsonTypes,
 		s.SetMaxItems,
 		s.SetMaxLength,
-		s.SetMaxProperties,
 		s.SetMinItems,
 		s.SetMinLength,
 		s.SetMinProperties,
@@ -353,6 +156,7 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetUniqueItems,
 		s.SetDependency,
 		s.SetPattern,
+		s.SetSubProperties,
 		s.SetChilds,
 		s.SetMultipleOf,
 	}
@@ -369,8 +173,25 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 	return nil
 }
 
-func (s *schemaProperty) SetRange(schema map[string]interface{}) error {
-	return s.sub_range.Set(schema)
+func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
+	creater_list := []func(map[string]interface{}) (schemaPropertySub, error){
+		newSubProp_maxProperties,
+		newSubProp_maximum,
+		newSubProp_minimum,
+	}
+
+	for _, fn := range creater_list {
+		obj, err := fn(schema)
+		if err != nil {
+			return err
+		}
+
+		if obj != nil {
+			s.subprop_list = append(s.subprop_list, obj)
+		}
+	}
+
+	return nil
 }
 
 func (s *schemaProperty) SetMultipleOf(schema map[string]interface{}) error {
@@ -568,10 +389,6 @@ func (s *schemaProperty) SetMaxLength(schema map[string]interface{}) error {
 	return nil
 }
 
-func (s *schemaProperty) SetMaxProperties(schema map[string]interface{}) error {
-	return s.sub_maxProp.Set(schema)
-}
-
 func (s *schemaProperty) SetMinItems(schema map[string]interface{}) error {
 	if obj, ok := schema["minItems"]; ok {
 		if num, ok := obj.(float64); ok {
@@ -729,10 +546,8 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 
 	fnlist := []func(interface{}) bool{
 		p.IsTypeValid,
-		p.IsRangeValid,
 		p.IsMaxItemsValid,
 		p.IsMaxLengthValid,
-		p.IsMaxPropertiesValid,
 		p.IsMinItemsValid,
 		p.IsMinLengthValid,
 		p.IsMinPropertiesValid,
@@ -748,6 +563,7 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		p.IsDependencyValid,
 		p.IsPatternValid,
 		p.IsMultipleOfValid,
+		p.IsSubPropertiesValid,
 
 		// fixed order
 		p.IsChildsValid,
@@ -761,6 +577,16 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		}
 	}
 
+	return true
+}
+
+func (p *schemaProperty) IsSubPropertiesValid(src interface{}) bool {
+	for _, obj := range p.subprop_list {
+		valid := obj.IsValid(src)
+		if !valid {
+			return false
+		}
+	}
 	return true
 }
 
@@ -796,10 +622,6 @@ func (p *schemaProperty) IsMaxLengthValid(src interface{}) bool {
 	}
 
 	return true
-}
-
-func (p *schemaProperty) IsMaxPropertiesValid(src interface{}) bool {
-	return p.sub_maxProp.IsValid(src)
 }
 
 //--
@@ -1118,8 +940,4 @@ func (s *schemaProperty) IsMultipleOfValid(src interface{}) bool {
 		}
 	}
 	return true
-}
-
-func (s *schemaProperty) IsRangeValid(src interface{}) bool {
-	return s.sub_range.IsValid(src)
 }
