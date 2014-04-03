@@ -253,3 +253,61 @@ func (s *schemaPropertySub_minLength) IsValid(src interface{}) bool {
 
 	return len(src_s) >= s.value
 }
+
+type schemaPropertySub_maxItems struct {
+	value int
+}
+
+func newSubProp_maxItems(schema map[string]interface{}) (schemaPropertySub, error) {
+	prop_raw, exist := schema["maxItems"]
+	if !exist {
+		return nil, nil
+	}
+
+	s := new(schemaPropertySub_maxItems)
+	prop_i, ok := getInteger(prop_raw)
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s.value = prop_i
+	return s, nil
+}
+
+func (s *schemaPropertySub_maxItems) IsValid(src interface{}) bool {
+	src_a, ok := src.([]interface{})
+	if !ok {
+		return true
+	}
+
+	return len(src_a) <= s.value
+}
+
+type schemaPropertySub_minItems struct {
+	value int
+}
+
+func newSubProp_minItems(schema map[string]interface{}) (schemaPropertySub, error) {
+	prop_raw, exist := schema["minItems"]
+	if !exist {
+		return nil, nil
+	}
+
+	s := new(schemaPropertySub_minItems)
+	prop_i, ok := getInteger(prop_raw)
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s.value = prop_i
+	return s, nil
+}
+
+func (s *schemaPropertySub_minItems) IsValid(src interface{}) bool {
+	src_a, ok := src.([]interface{})
+	if !ok {
+		return true
+	}
+
+	return len(src_a) >= s.value
+}
