@@ -200,6 +200,44 @@ func (s *schemaPropertySub_range) isMinimumValid(val float64) bool {
 	return false
 }
 
+type schemaPropertySub_maxProperties struct {
+	setted bool
+	value  int
+}
+
+// defined 5.4.1. (@Validation)
+func (s *schemaPropertySub_maxProperties) Set(schema map[string]interface{}) error {
+	prop_raw, prop_exist := schema["maxProperties"]
+
+	if prop_exist {
+		s.setted = true
+
+		val_float, ok := prop_raw.(float64)
+		if !ok {
+			return ErrInvalidSchemaFormat
+		}
+
+		if math.Mod(val_float, 1) != 0 {
+			return ErrInvalidSchemaFormat
+		}
+
+		s.value = int(val_float)
+	} else {
+		s.setted = false
+	}
+
+	return nil
+}
+
+func (s *schemaPropertySub_maxProperties) IsValid(src interface{}) bool {
+	obj, ok := src.(map[string]interface{})
+	if !s.setted || !ok {
+		return true
+	}
+
+	return len(obj) <= s.value
+}
+
 // schemaProperty reprecents a property of jsonschema.
 type schemaProperty struct {
 	mother       *schemaProperty
@@ -213,13 +251,11 @@ type schemaProperty struct {
 	items         []*schemaProperty
 	isItemsOne    bool
 
-	sub_range *schemaPropertySub_range //maximum / minimum
+	sub_range   *schemaPropertySub_range         //maximum / minimum
+	sub_maxProp *schemaPropertySub_maxProperties //maxPoperties
 
 	isSetMaxLength bool
 	maxLength      int
-
-	isSetMaxProperties bool
-	maxProperties      int
 
 	isSetMinLength bool
 	minLength      int
@@ -281,6 +317,7 @@ func newSchemaProperty(mother *schemaProperty, schema *schemaObject, original st
 		dependency:                make(map[string][]string),
 		dependencySchema:          make(map[string]*schemaProperty),
 		sub_range:                 &schemaPropertySub_range{},
+		sub_maxProp:               &schemaPropertySub_maxProperties{},
 	}
 }
 
@@ -532,14 +569,7 @@ func (s *schemaProperty) SetMaxLength(schema map[string]interface{}) error {
 }
 
 func (s *schemaProperty) SetMaxProperties(schema map[string]interface{}) error {
-	if obj, ok := schema["maxProperties"]; ok {
-		if f, ok := obj.(float64); ok {
-			s.isSetMaxProperties = true
-			s.maxProperties = int(f)
-		}
-	}
-
-	return nil
+	return s.sub_maxProp.Set(schema)
 }
 
 func (s *schemaProperty) SetMinItems(schema map[string]interface{}) error {
@@ -769,15 +799,7 @@ func (p *schemaProperty) IsMaxLengthValid(src interface{}) bool {
 }
 
 func (p *schemaProperty) IsMaxPropertiesValid(src interface{}) bool {
-	if !p.isSetMaxProperties {
-		return true
-	}
-
-	if v, ok := src.(map[string]interface{}); ok {
-		return len(v) <= p.maxProperties
-	}
-
-	return true
+	return p.sub_maxProp.IsValid(src)
 }
 
 //--
