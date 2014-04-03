@@ -433,3 +433,84 @@ func (s *schemaPropertySub_required) IsValid(src interface{}) bool {
 
 	return true
 }
+
+// defined at 5.4.5
+type schemaPropertySub_dependency struct {
+	elementname map[string][]string
+	validation  map[string]*schemaProperty
+}
+
+func newSubProp_dependency(schema map[string]interface{}) (schemaPropertySub, error) {
+	dep, ok := schema["dependencies"]
+	if !ok {
+		return nil, nil
+	}
+
+	depobjs, ok := dep.(map[string]interface{})
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s := &schemaPropertySub_dependency{
+		elementname: make(map[string][]string),
+		validation:  make(map[string]*schemaProperty, 0),
+	}
+	for name, value := range depobjs {
+		switch depobj := value.(type) {
+		case []interface{}:
+			val := convInterfaceArrayToStringArray(depobj)
+			if val == nil {
+				return nil, ErrInvalidSchemaFormat
+			}
+			s.elementname[name] = val
+
+		case map[string]interface{}:
+			news := newSchemaProperty(nil, nil, "#") //FIXME
+			err := news.Recognize(depobj)
+			if err != nil {
+				return nil, ErrInvalidSchemaFormat
+			}
+			s.validation[name] = news
+
+		default:
+			return nil, ErrInvalidSchemaFormat
+		}
+	}
+
+	return s, nil
+}
+
+func (s *schemaPropertySub_dependency) IsValid(src interface{}) bool {
+	obj, ok := src.(map[string]interface{})
+	if !ok {
+		return true
+	}
+
+	// keyname
+	for name, deps := range s.elementname {
+		if _, ok := obj[name]; !ok {
+			// specified element was not found
+			continue
+		}
+
+		for _, dep := range deps {
+			// is depenedant keys exist?
+			if _, ok := obj[dep]; !ok {
+				return false
+			}
+		}
+	}
+
+	// element schema
+	for name, dep := range s.validation {
+		if _, ok := obj[name]; !ok {
+			continue
+		}
+
+		if !dep.IsValid(obj) {
+			return false
+		}
+	}
+
+	return true
+}

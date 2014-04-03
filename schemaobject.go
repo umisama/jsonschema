@@ -68,9 +68,6 @@ type schemaProperty struct {
 
 	enum []interface{}
 
-	dependency       map[string][]string
-	dependencySchema map[string]*schemaProperty
-
 	multipleOf float64
 
 	// validation
@@ -92,8 +89,6 @@ func newSchemaProperty(mother *schemaProperty, schema *schemaObject, original st
 		anyOf:                     make([]*schemaProperty, 0),
 		oneOf:                     make([]*schemaProperty, 0),
 		enum:                      make([]interface{}, 0),
-		dependency:                make(map[string][]string),
-		dependencySchema:          make(map[string]*schemaProperty),
 		subprop_list:              make([]schemaPropertySub, 0),
 	}
 }
@@ -119,7 +114,6 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetOneOf,
 		s.SetNot,
 		s.SetEnum,
-		s.SetDependency,
 		s.SetSubProperties,
 		s.SetProperties,
 		s.SetMultipleOf,
@@ -150,6 +144,7 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 		newSubProp_pattern,
 		newSubProp_uniqueItem,
 		newSubProp_required,
+		newSubProp_dependency,
 	}
 
 	for _, fn := range creater_list {
@@ -172,31 +167,6 @@ func (s *schemaProperty) SetMultipleOf(schema map[string]interface{}) error {
 			s.multipleOf = val
 		}
 	}
-	return nil
-}
-
-func (s *schemaProperty) SetDependency(schema map[string]interface{}) error {
-	if v, ok := schema["dependencies"]; ok {
-		if depkey, ok := v.(map[string]interface{}); ok {
-			for k, v := range depkey {
-				dep := make([]string, 0)
-				if val, ok := v.([]interface{}); ok {
-					for _, v := range val {
-						dep = append(dep, v.(string))
-					}
-					s.dependency[k] = dep
-				} else if val, ok := v.(map[string]interface{}); ok {
-					news := s.NewChild()
-					err := news.Recognize(val)
-					if err != nil {
-						return err
-					}
-					s.dependencySchema[k] = news
-				}
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -439,7 +409,6 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		p.IsOneOfValid,
 		p.IsNotValid,
 		p.IsEnumValid,
-		p.IsDependencyValid,
 		p.IsMultipleOfValid,
 		p.IsSubPropertiesValid,
 
@@ -674,34 +643,6 @@ func (s *schemaProperty) IsEnumValid(src interface{}) bool {
 		}
 	}
 	return false
-}
-
-func (s *schemaProperty) IsDependencyValid(src interface{}) bool {
-	if obj, ok := src.(map[string]interface{}); ok {
-		if len(s.dependency) != 0 {
-			for k, v := range s.dependency {
-				if _, ok := obj[k]; ok {
-					for _, v2 := range v {
-						if _, ok := obj[v2]; !ok {
-							return false
-						}
-					}
-				}
-			}
-		}
-
-		if len(s.dependencySchema) != 0 {
-			for k, v := range s.dependencySchema {
-				if _, ok := obj[k]; ok {
-					if !v.IsValid(obj) {
-						return false
-					}
-				}
-			}
-		}
-	}
-
-	return true
 }
 
 func (s *schemaProperty) IsMultipleOfValid(src interface{}) bool {
