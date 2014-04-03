@@ -70,8 +70,6 @@ type schemaProperty struct {
 
 	enum []interface{}
 
-	uniqueItems bool
-
 	dependency       map[string][]string
 	dependencySchema map[string]*schemaProperty
 
@@ -125,7 +123,6 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetRequired,
 		s.SetNot,
 		s.SetEnum,
-		s.SetUniqueItems,
 		s.SetDependency,
 		s.SetSubProperties,
 		s.SetProperties,
@@ -155,6 +152,7 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 		newSubProp_maxItems,
 		newSubProp_minItems,
 		newSubProp_pattern,
+		newSubProp_uniqueItem,
 	}
 
 	for _, fn := range creater_list {
@@ -202,15 +200,6 @@ func (s *schemaProperty) SetDependency(schema map[string]interface{}) error {
 		}
 	}
 
-	return nil
-}
-
-func (s *schemaProperty) SetUniqueItems(schema map[string]interface{}) error {
-	if v, ok := schema["uniqueItems"]; ok {
-		if yes, ok := v.(bool); ok {
-			s.uniqueItems = yes
-		}
-	}
 	return nil
 }
 
@@ -467,7 +456,6 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		p.IsRequiredValid,
 		p.IsNotValid,
 		p.IsEnumValid,
-		p.IsUniqueItemsValid,
 		p.IsDependencyValid,
 		p.IsMultipleOfValid,
 		p.IsSubPropertiesValid,
@@ -714,28 +702,6 @@ func (s *schemaProperty) IsEnumValid(src interface{}) bool {
 		}
 	}
 	return false
-}
-
-func (s *schemaProperty) IsUniqueItemsValid(src interface{}) bool {
-	if !s.uniqueItems {
-		return true
-	}
-
-	if v, ok := src.([]interface{}); ok {
-		for i, iv := range v {
-			for j, jv := range v {
-				if i == j {
-					continue
-				}
-
-				if reflect.DeepEqual(iv, jv) {
-					return false
-				}
-			}
-		}
-	}
-
-	return true
 }
 
 func (s *schemaProperty) IsDependencyValid(src interface{}) bool {

@@ -1,6 +1,7 @@
 package jsonschema
 
 import (
+	"reflect"
 	"regexp"
 )
 
@@ -337,3 +338,52 @@ func (s *schemaPropertySub_pattern) IsValid(src interface{}) bool {
 
 	return s.value.Match([]byte(val))
 }
+
+// defined at 5.3.4
+type schemaPropertySub_uniqueItem struct {
+	value bool
+}
+
+func newSubProp_uniqueItem(schema map[string]interface{}) (schemaPropertySub, error) {
+	prop_raw, exist := schema["uniqueItems"]
+	if !exist {
+		return nil, nil
+	}
+
+	s := new(schemaPropertySub_uniqueItem)
+	prop_b, ok := prop_raw.(bool)
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s.value = prop_b
+	return s, nil
+}
+
+func (s *schemaPropertySub_uniqueItem) IsValid(src interface{}) bool {
+	val, ok := src.([]interface{})
+	if !ok {
+		return true
+	}
+
+	if !s.value {
+		// always success if the keyword has false.
+		return true
+	}
+
+	for k1, v1 := range val {
+		for k2, v2 := range val {
+			if k1 == k2 {
+				continue
+			}
+
+			if reflect.DeepEqual(v1, v2) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+
