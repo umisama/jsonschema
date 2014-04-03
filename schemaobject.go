@@ -1,8 +1,6 @@
 package jsonschema
 
 import (
-	"fmt"
-	"github.com/kr/pretty"
 	"math"
 	"reflect"
 	"regexp"
@@ -40,10 +38,6 @@ func (s *schemaObject) newSchemaProperty(schema map[string]interface{}) (prop *s
 	}
 
 	return
-}
-
-func (s *schemaObject) String() string {
-	return fmt.Sprintf("%#v", pretty.Formatter(s))
 }
 
 // schemaProperty reprecents a property of jsonschema.
