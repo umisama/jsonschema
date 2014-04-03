@@ -1,10 +1,14 @@
 package jsonschema
 
+import (
+	"regexp"
+)
+
 type schemaPropertySub interface {
 	IsValid(interface{}) bool
 }
 
-// defined 5.1.3.(@Validation)
+// defined at 5.1.3.(@Validation)
 type schemaPropertySub_minimum struct {
 	minimum          float64
 	exclusiveMinimum bool
@@ -61,7 +65,7 @@ func (s *schemaPropertySub_minimum) IsValid(src interface{}) bool {
 	return false
 }
 
-// defined 5.1.2.(@Validation)
+// defined at 5.1.2.(@Validation)
 type schemaPropertySub_maximum struct {
 	maximum          float64
 	exclusiveMaximum bool
@@ -118,7 +122,7 @@ func (s *schemaPropertySub_maximum) IsValid(src interface{}) bool {
 	return false
 }
 
-// defined 5.4.2. (@Validation)
+// defined at 5.4.2. (@Validation)
 type schemaPropertySub_minProperties struct {
 	value int
 }
@@ -148,7 +152,7 @@ func (s *schemaPropertySub_minProperties) IsValid(src interface{}) bool {
 	return len(obj) >= s.value
 }
 
-// defined 5.4.1. (@Validation)
+// defined at 5.4.1. (@Validation)
 type schemaPropertySub_maxProperties struct {
 	value int
 }
@@ -178,7 +182,7 @@ func (s *schemaPropertySub_maxProperties) IsValid(src interface{}) bool {
 	return len(obj) <= s.value
 }
 
-// defined 5.4.1. (@Validation)
+// defined at 5.4.1. (@Validation)
 type schemaPropertySub_maxLength struct {
 	value int
 }
@@ -208,7 +212,7 @@ func (s *schemaPropertySub_maxLength) IsValid(src interface{}) bool {
 	return len(src_s) <= s.value
 }
 
-// defined 5.4.2. (@Validation)
+// defined at 5.4.2. (@Validation)
 type schemaPropertySub_minLength struct {
 	value int
 }
@@ -238,6 +242,7 @@ func (s *schemaPropertySub_minLength) IsValid(src interface{}) bool {
 	return len(src_s) >= s.value
 }
 
+// defined at 5.3.2. (@Validation)
 type schemaPropertySub_maxItems struct {
 	value int
 }
@@ -267,6 +272,7 @@ func (s *schemaPropertySub_maxItems) IsValid(src interface{}) bool {
 	return len(src_a) <= s.value
 }
 
+// defined at 5.3.3. (@Validation)
 type schemaPropertySub_minItems struct {
 	value int
 }
@@ -294,4 +300,40 @@ func (s *schemaPropertySub_minItems) IsValid(src interface{}) bool {
 	}
 
 	return len(src_a) >= s.value
+}
+
+// defined at 5.2.3. (@Validation)
+type schemaPropertySub_pattern struct {
+	value *regexp.Regexp
+}
+
+func newSubProp_pattern(schema map[string]interface{}) (schemaPropertySub, error) {
+	prop_raw, exist := schema["pattern"]
+	if !exist {
+		return nil, nil
+	}
+
+	s := new(schemaPropertySub_pattern)
+	prop_s, ok := prop_raw.(string)
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	// FIXME: re2 is not compatible with ECMA-262.
+	exp, err := regexp.CompilePOSIX(prop_s)
+	if err != nil {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s.value = exp
+	return s, nil
+}
+
+func (s *schemaPropertySub_pattern) IsValid(src interface{}) bool {
+	val, ok := src.(string)
+	if !ok {
+		return true
+	}
+
+	return s.value.Match([]byte(val))
 }

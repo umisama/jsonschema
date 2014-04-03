@@ -47,22 +47,22 @@ type schemaProperty struct {
 	original     string
 
 	// properties
-	jsontype      []JsonType
-	childs        map[string]*schemaProperty
-	patternChilds map[string]*schemaProperty
-	items         []*schemaProperty
-	isItemsOne    bool
-	subprop_list  []schemaPropertySub
+	jsontype          []JsonType
+	properties        map[string]*schemaProperty
+	patternProperties map[string]*schemaProperty
+	subprop_list      []schemaPropertySub
 
 	additionalProperties      *schemaProperty
 	allowAdditionalProperties bool
 
+	isItemsOne bool
+	items      []*schemaProperty
+	allOf      []*schemaProperty
+	anyOf      []*schemaProperty
+	oneOf      []*schemaProperty
+
 	additionalItems      *schemaProperty
 	allowAdditionalItems bool
-
-	allOf []*schemaProperty
-	anyOf []*schemaProperty
-	oneOf []*schemaProperty
 
 	required []string
 
@@ -75,8 +75,6 @@ type schemaProperty struct {
 	dependency       map[string][]string
 	dependencySchema map[string]*schemaProperty
 
-	pattern string
-
 	multipleOf float64
 
 	// validation
@@ -86,8 +84,8 @@ type schemaProperty struct {
 func newSchemaProperty(mother *schemaProperty, schema *schemaObject, original string) *schemaProperty {
 	return &schemaProperty{
 		jsontype:                  make([]JsonType, 0),
-		childs:                    make(map[string]*schemaProperty),
-		patternChilds:             make(map[string]*schemaProperty),
+		properties:                make(map[string]*schemaProperty),
+		patternProperties:         make(map[string]*schemaProperty),
 		items:                     make([]*schemaProperty, 0),
 		mother:                    mother,
 		schemaobject:              schema,
@@ -117,7 +115,7 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 	fnlist := []func(map[string]interface{}) error{
 		s.SetRef,
 		s.SetJsonTypes,
-		s.SetPatternChilds,
+		s.SetPatternProperties,
 		s.SetItems,
 		s.SetAdditionalProperties,
 		s.SetAdditionalItems,
@@ -129,9 +127,8 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetEnum,
 		s.SetUniqueItems,
 		s.SetDependency,
-		s.SetPattern,
 		s.SetSubProperties,
-		s.SetChilds,
+		s.SetProperties,
 		s.SetMultipleOf,
 	}
 
@@ -157,6 +154,7 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 		newSubProp_minLength,
 		newSubProp_maxItems,
 		newSubProp_minItems,
+		newSubProp_pattern,
 	}
 
 	for _, fn := range creater_list {
@@ -177,15 +175,6 @@ func (s *schemaProperty) SetMultipleOf(schema map[string]interface{}) error {
 	if v, ok := schema["multipleOf"]; ok {
 		if val, ok := v.(float64); ok {
 			s.multipleOf = val
-		}
-	}
-	return nil
-}
-
-func (s *schemaProperty) SetPattern(schema map[string]interface{}) error {
-	if v, ok := schema["pattern"]; ok {
-		if val, ok := v.(string); ok {
-			s.pattern = val
 		}
 	}
 	return nil
@@ -282,7 +271,7 @@ func (s *schemaProperty) SetJsonTypes(schema map[string]interface{}) error {
 	return nil
 }
 
-func (s *schemaProperty) SetChilds(schema map[string]interface{}) error {
+func (s *schemaProperty) SetProperties(schema map[string]interface{}) error {
 	if obj, ok := schema["properties"]; ok {
 		if obj2, ok := obj.(map[string]interface{}); ok {
 			for k, v := range obj2 {
@@ -292,7 +281,7 @@ func (s *schemaProperty) SetChilds(schema map[string]interface{}) error {
 					if err != nil {
 						return err
 					}
-					s.childs[k] = news
+					s.properties[k] = news
 				}
 			}
 		}
@@ -301,7 +290,7 @@ func (s *schemaProperty) SetChilds(schema map[string]interface{}) error {
 	return nil
 }
 
-func (s *schemaProperty) SetPatternChilds(schema map[string]interface{}) error {
+func (s *schemaProperty) SetPatternProperties(schema map[string]interface{}) error {
 	if obj, ok := schema["patternProperties"]; ok {
 		if obj2, ok := obj.(map[string]interface{}); ok {
 			for k, v := range obj2 {
@@ -311,7 +300,7 @@ func (s *schemaProperty) SetPatternChilds(schema map[string]interface{}) error {
 					if err != nil {
 						return err
 					}
-					s.patternChilds[k] = news
+					s.patternProperties[k] = news
 				}
 			}
 		}
@@ -470,7 +459,7 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 
 	fnlist := []func(interface{}) bool{
 		p.IsTypeValid,
-		p.IsPatternChildsValid,
+		p.IsPatternPropertiesValid,
 		p.IsItemsValid,
 		p.IsAllOfValid,
 		p.IsAnyOfValid,
@@ -480,12 +469,11 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		p.IsEnumValid,
 		p.IsUniqueItemsValid,
 		p.IsDependencyValid,
-		p.IsPatternValid,
 		p.IsMultipleOfValid,
 		p.IsSubPropertiesValid,
 
 		// fixed order
-		p.IsChildsValid,
+		p.IsPropertiesValid,
 		p.IsAdditionalPropertyValid,
 		p.IsAdditionalItemsValid,
 	}
@@ -520,9 +508,9 @@ func (p *schemaProperty) IsTypeValid(src interface{}) bool {
 }
 
 //--
-func (p *schemaProperty) IsChildsValid(src interface{}) bool {
+func (p *schemaProperty) IsPropertiesValid(src interface{}) bool {
 	if obj, ok := src.(map[string]interface{}); ok {
-		for k, v := range p.childs {
+		for k, v := range p.properties {
 			if prop, ok := obj[k]; ok {
 				res := v.IsValid(prop)
 				p.checked = append(p.checked, k)
@@ -563,9 +551,9 @@ func (p *schemaProperty) IsItemsValid(src interface{}) bool {
 	return true
 }
 
-func (p *schemaProperty) IsPatternChildsValid(src interface{}) bool {
+func (p *schemaProperty) IsPatternPropertiesValid(src interface{}) bool {
 	if obj, ok := src.(map[string]interface{}); ok {
-		for pat, child := range p.patternChilds {
+		for pat, child := range p.patternProperties {
 			re, err := regexp.Compile(pat)
 			if err != nil {
 				return false
@@ -775,20 +763,6 @@ func (s *schemaProperty) IsDependencyValid(src interface{}) bool {
 		}
 	}
 
-	return true
-}
-
-func (s *schemaProperty) IsPatternValid(src interface{}) bool {
-	if s.pattern != "" {
-		if val, ok := src.(string); ok {
-			re, err := regexp.Compile(s.pattern)
-			if err != nil {
-				return false
-			}
-
-			return re.MatchString(val)
-		}
-	}
 	return true
 }
 
