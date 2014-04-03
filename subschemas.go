@@ -1,9 +1,5 @@
 package jsonschema
 
-import (
-	"math"
-)
-
 type schemaPropertySub interface {
 	IsValid(interface{}) bool
 }
@@ -134,18 +130,12 @@ func newSubProp_minProperties(schema map[string]interface{}) (schemaPropertySub,
 	}
 
 	s := new(schemaPropertySub_minProperties)
-	val_float, ok := prop_raw.(float64)
+	prop_i, ok := getInteger(prop_raw)
 	if !ok {
-		// must number
 		return nil, ErrInvalidSchemaFormat
 	}
 
-	if math.Mod(val_float, 1) != 0 {
-		// must number
-		return nil, ErrInvalidSchemaFormat
-	}
-
-	s.value = int(val_float)
+	s.value = prop_i
 	return s, nil
 }
 
@@ -170,18 +160,12 @@ func newSubProp_maxProperties(schema map[string]interface{}) (schemaPropertySub,
 	}
 
 	s := new(schemaPropertySub_maxProperties)
-	val_float, ok := prop_raw.(float64)
+	prop_i, ok := getInteger(prop_raw)
 	if !ok {
-		// must number
 		return nil, ErrInvalidSchemaFormat
 	}
 
-	if math.Mod(val_float, 1) != 0 {
-		// must number
-		return nil, ErrInvalidSchemaFormat
-	}
-
-	s.value = int(val_float)
+	s.value = prop_i
 	return s, nil
 }
 
