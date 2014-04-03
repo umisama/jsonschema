@@ -195,6 +195,61 @@ func (s *schemaPropertySub_maxProperties) IsValid(src interface{}) bool {
 }
 
 // defined 5.4.1. (@Validation)
-type schemaPropertySub_maxProperties struct {
+type schemaPropertySub_maxLength struct {
 	value int
+}
+
+func newSubProp_maxLength(schema map[string]interface{}) (schemaPropertySub, error) {
+	prop_raw, exist := schema["maxLength"]
+	if !exist {
+		return nil, nil
+	}
+
+	s := new(schemaPropertySub_maxLength)
+	prop_i, ok := getInteger(prop_raw)
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s.value = prop_i
+	return s, nil
+}
+
+func (s *schemaPropertySub_maxLength) IsValid(src interface{}) bool {
+	src_s, ok := src.(string)
+	if !ok {
+		return true
+	}
+
+	return len(src_s) <= s.value
+}
+
+// defined 5.4.2. (@Validation)
+type schemaPropertySub_minLength struct {
+	value int
+}
+
+func newSubProp_minLength(schema map[string]interface{}) (schemaPropertySub, error) {
+	prop_raw, exist := schema["minLength"]
+	if !exist {
+		return nil, nil
+	}
+
+	s := new(schemaPropertySub_minLength)
+	prop_i, ok := getInteger(prop_raw)
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s.value = prop_i
+	return s, nil
+}
+
+func (s *schemaPropertySub_minLength) IsValid(src interface{}) bool {
+	src_s, ok := src.(string)
+	if !ok {
+		return true
+	}
+
+	return len(src_s) >= s.value
 }

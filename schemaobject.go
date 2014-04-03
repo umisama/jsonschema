@@ -54,12 +54,6 @@ type schemaProperty struct {
 	isItemsOne    bool
 	subprop_list  []schemaPropertySub
 
-	isSetMaxLength bool
-	maxLength      int
-
-	isSetMinLength bool
-	minLength      int
-
 	isSetMaxItems bool
 	maxItems      int
 
@@ -130,9 +124,7 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetRef,
 		s.SetJsonTypes,
 		s.SetMaxItems,
-		s.SetMaxLength,
 		s.SetMinItems,
-		s.SetMinLength,
 		s.SetPatternChilds,
 		s.SetItems,
 		s.SetAdditionalProperties,
@@ -169,6 +161,8 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 		newSubProp_minProperties,
 		newSubProp_maximum,
 		newSubProp_minimum,
+		newSubProp_minLength,
+		newSubProp_maxLength,
 	}
 
 	for _, fn := range creater_list {
@@ -369,33 +363,11 @@ func (s *schemaProperty) SetMaxItems(schema map[string]interface{}) error {
 	return nil
 }
 
-func (s *schemaProperty) SetMaxLength(schema map[string]interface{}) error {
-	if obj, ok := schema["maxLength"]; ok {
-		if f, ok := obj.(float64); ok {
-			s.isSetMaxLength = true
-			s.maxLength = int(f)
-		}
-	}
-
-	return nil
-}
-
 func (s *schemaProperty) SetMinItems(schema map[string]interface{}) error {
 	if obj, ok := schema["minItems"]; ok {
 		if num, ok := obj.(float64); ok {
 			s.isSetMinItems = true
 			s.minItems = int(num)
-		}
-	}
-
-	return nil
-}
-
-func (s *schemaProperty) SetMinLength(schema map[string]interface{}) error {
-	if obj, ok := schema["minLength"]; ok {
-		if f, ok := obj.(float64); ok {
-			s.isSetMinLength = true
-			s.minLength = int(f)
 		}
 	}
 
@@ -527,9 +499,7 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 	fnlist := []func(interface{}) bool{
 		p.IsTypeValid,
 		p.IsMaxItemsValid,
-		p.IsMaxLengthValid,
 		p.IsMinItemsValid,
-		p.IsMinLengthValid,
 		p.IsPatternChildsValid,
 		p.IsItemsValid,
 		p.IsAllOfValid,
@@ -591,18 +561,6 @@ func (p *schemaProperty) IsMaxItemsValid(src interface{}) bool {
 	return true
 }
 
-func (p *schemaProperty) IsMaxLengthValid(src interface{}) bool {
-	if !p.isSetMaxLength {
-		return true
-	}
-
-	if v, ok := src.(string); ok {
-		return len(v) <= p.maxLength
-	}
-
-	return true
-}
-
 //--
 func (p *schemaProperty) IsMinItemsValid(src interface{}) bool {
 	if !p.isSetMinItems {
@@ -611,18 +569,6 @@ func (p *schemaProperty) IsMinItemsValid(src interface{}) bool {
 
 	if v, ok := src.([]interface{}); ok {
 		return len(v) >= p.minItems
-	}
-
-	return true
-}
-
-func (p *schemaProperty) IsMinLengthValid(src interface{}) bool {
-	if !p.isSetMinLength {
-		return true
-	}
-
-	if v, ok := src.(string); ok {
-		return len(v) >= p.minLength
 	}
 
 	return true
