@@ -373,11 +373,7 @@ func (s *schemaPropertySub_uniqueItem) IsValid(src interface{}) bool {
 
 	for k1, v1 := range val {
 		for k2, v2 := range val {
-			if k1 == k2 {
-				continue
-			}
-
-			if reflect.DeepEqual(v1, v2) {
+			if reflect.DeepEqual(v1, v2) && k1 != k2 {
 				return false
 			}
 		}
@@ -386,4 +382,54 @@ func (s *schemaPropertySub_uniqueItem) IsValid(src interface{}) bool {
 	return true
 }
 
+// defined at 5.4.3
+type schemaPropertySub_required struct {
+	value []string
+}
 
+func newSubProp_required(schema map[string]interface{}) (schemaPropertySub, error) {
+	prop_raw, exist := schema["required"]
+	if !exist {
+		return nil, nil
+	}
+
+	s := new(schemaPropertySub_required)
+	prop_a, ok := prop_raw.([]interface{})
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	prop_s := convInterfaceArrayToStringArray(prop_a)
+	if prop_s == nil {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	// values are must unique.
+	for k1, v1 := range prop_a {
+		for k2, v2 := range prop_a {
+			if v1 == v2 && k1 != k2 {
+				return nil, ErrInvalidSchemaFormat
+			}
+		}
+	}
+
+	s.value = prop_s
+	return s, nil
+}
+
+func (s *schemaPropertySub_required) IsValid(src interface{}) bool {
+	val, ok := src.(map[string]interface{})
+	if !ok {
+		return true
+	}
+
+	for _, v := range s.value {
+		_, ok := val[v]
+		if !ok {
+			// elements not found
+			return false
+		}
+	}
+
+	return true
+}

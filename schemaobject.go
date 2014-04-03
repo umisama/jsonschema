@@ -64,8 +64,6 @@ type schemaProperty struct {
 	additionalItems      *schemaProperty
 	allowAdditionalItems bool
 
-	required []string
-
 	not *schemaProperty
 
 	enum []interface{}
@@ -93,7 +91,6 @@ func newSchemaProperty(mother *schemaProperty, schema *schemaObject, original st
 		allOf:                     make([]*schemaProperty, 0),
 		anyOf:                     make([]*schemaProperty, 0),
 		oneOf:                     make([]*schemaProperty, 0),
-		required:                  make([]string, 0),
 		enum:                      make([]interface{}, 0),
 		dependency:                make(map[string][]string),
 		dependencySchema:          make(map[string]*schemaProperty),
@@ -120,7 +117,6 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetAllOf,
 		s.SetAnyOf,
 		s.SetOneOf,
-		s.SetRequired,
 		s.SetNot,
 		s.SetEnum,
 		s.SetDependency,
@@ -153,6 +149,7 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 		newSubProp_minItems,
 		newSubProp_pattern,
 		newSubProp_uniqueItem,
+		newSubProp_required,
 	}
 
 	for _, fn := range creater_list {
@@ -410,19 +407,6 @@ func (s *schemaProperty) SetOneOf(schema map[string]interface{}) error {
 	return nil
 }
 
-func (s *schemaProperty) SetRequired(schema map[string]interface{}) error {
-	if obj, ok := schema["required"]; ok {
-		if prop, ok := obj.([]interface{}); ok {
-			for _, v := range prop {
-				if obj2, ok := v.(string); ok {
-					s.required = append(s.required, obj2)
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func (s *schemaProperty) SetNot(schema map[string]interface{}) error {
 	if obj, ok := schema["not"]; ok {
 		if prop, ok := obj.(map[string]interface{}); ok {
@@ -453,7 +437,6 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		p.IsAllOfValid,
 		p.IsAnyOfValid,
 		p.IsOneOfValid,
-		p.IsRequiredValid,
 		p.IsNotValid,
 		p.IsEnumValid,
 		p.IsDependencyValid,
@@ -670,17 +653,6 @@ func (s *schemaProperty) IsOneOfValid(src interface{}) bool {
 		}
 	}
 	return cond
-}
-
-func (s *schemaProperty) IsRequiredValid(src interface{}) bool {
-	if obj, ok := src.(map[string]interface{}); ok {
-		for _, v := range s.required {
-			if _, ok := obj[v]; !ok {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 func (s *schemaProperty) IsNotValid(src interface{}) bool {
