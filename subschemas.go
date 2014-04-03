@@ -122,6 +122,42 @@ func (s *schemaPropertySub_maximum) IsValid(src interface{}) bool {
 	return false
 }
 
+// defined 5.4.2. (@Validation)
+type schemaPropertySub_minProperties struct {
+	value int
+}
+
+func newSubProp_minProperties(schema map[string]interface{}) (schemaPropertySub, error) {
+	prop_raw, prop_exist := schema["minProperties"]
+	if !prop_exist {
+		return nil, nil
+	}
+
+	s := new(schemaPropertySub_minProperties)
+	val_float, ok := prop_raw.(float64)
+	if !ok {
+		// must number
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	if math.Mod(val_float, 1) != 0 {
+		// must number
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s.value = int(val_float)
+	return s, nil
+}
+
+func (s *schemaPropertySub_minProperties) IsValid(src interface{}) bool {
+	obj, ok := src.(map[string]interface{})
+	if !ok {
+		return true
+	}
+
+	return len(obj) >= s.value
+}
+
 // defined 5.4.1. (@Validation)
 type schemaPropertySub_maxProperties struct {
 	value int
@@ -156,4 +192,9 @@ func (s *schemaPropertySub_maxProperties) IsValid(src interface{}) bool {
 	}
 
 	return len(obj) <= s.value
+}
+
+// defined 5.4.1. (@Validation)
+type schemaPropertySub_maxProperties struct {
+	value int
 }

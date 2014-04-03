@@ -60,9 +60,6 @@ type schemaProperty struct {
 	isSetMinLength bool
 	minLength      int
 
-	isSetMinProperties bool
-	minProperties      int
-
 	isSetMaxItems bool
 	maxItems      int
 
@@ -136,7 +133,6 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetMaxLength,
 		s.SetMinItems,
 		s.SetMinLength,
-		s.SetMinProperties,
 		s.SetPatternChilds,
 		s.SetItems,
 		s.SetAdditionalProperties,
@@ -170,6 +166,7 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 	creater_list := []func(map[string]interface{}) (schemaPropertySub, error){
 		newSubProp_maxProperties,
+		newSubProp_minProperties,
 		newSubProp_maximum,
 		newSubProp_minimum,
 	}
@@ -405,17 +402,6 @@ func (s *schemaProperty) SetMinLength(schema map[string]interface{}) error {
 	return nil
 }
 
-func (s *schemaProperty) SetMinProperties(schema map[string]interface{}) error {
-	if obj, ok := schema["minProperties"]; ok {
-		if f, ok := obj.(float64); ok {
-			s.isSetMinProperties = true
-			s.minProperties = int(f)
-		}
-	}
-
-	return nil
-}
-
 func (s *schemaProperty) SetAdditionalProperties(schema map[string]interface{}) error {
 	if obj, ok := schema["additionalProperties"]; ok {
 		if prop, ok := obj.(map[string]interface{}); ok {
@@ -544,7 +530,6 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		p.IsMaxLengthValid,
 		p.IsMinItemsValid,
 		p.IsMinLengthValid,
-		p.IsMinPropertiesValid,
 		p.IsPatternChildsValid,
 		p.IsItemsValid,
 		p.IsAllOfValid,
@@ -638,18 +623,6 @@ func (p *schemaProperty) IsMinLengthValid(src interface{}) bool {
 
 	if v, ok := src.(string); ok {
 		return len(v) >= p.minLength
-	}
-
-	return true
-}
-
-func (p *schemaProperty) IsMinPropertiesValid(src interface{}) bool {
-	if !p.isSetMinProperties {
-		return true
-	}
-
-	if v, ok := src.(map[string]interface{}); ok {
-		return len(v) >= p.minProperties
 	}
 
 	return true
