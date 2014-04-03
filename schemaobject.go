@@ -132,7 +132,7 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 }
 
 func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
-	creater_list := []func(map[string]interface{}) (schemaPropertySub, error){
+	creater_list := []func(map[string]interface{}, *schemaProperty) (schemaPropertySub, error){
 		newSubProp_maxProperties,
 		newSubProp_minProperties,
 		newSubProp_maximum,
@@ -148,7 +148,7 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 	}
 
 	for _, fn := range creater_list {
-		obj, err := fn(schema)
+		obj, err := fn(schema, s)
 		if err != nil {
 			return err
 		}

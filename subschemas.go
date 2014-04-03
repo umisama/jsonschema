@@ -15,7 +15,7 @@ type schemaPropertySub_minimum struct {
 	exclusiveMinimum bool
 }
 
-func newSubProp_minimum(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_minimum(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	min_raw, min_exist := schema["minimum"]
 	excMin_raw, excMin_exist := schema["exclusiveMinimum"]
 
@@ -72,7 +72,7 @@ type schemaPropertySub_maximum struct {
 	exclusiveMaximum bool
 }
 
-func newSubProp_maximum(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_maximum(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	max_raw, max_exist := schema["maximum"]
 	excMax_raw, excMax_exist := schema["exclusiveMaximum"]
 
@@ -128,7 +128,7 @@ type schemaPropertySub_minProperties struct {
 	value int
 }
 
-func newSubProp_minProperties(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_minProperties(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	prop_raw, prop_exist := schema["minProperties"]
 	if !prop_exist {
 		return nil, nil
@@ -158,7 +158,7 @@ type schemaPropertySub_maxProperties struct {
 	value int
 }
 
-func newSubProp_maxProperties(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_maxProperties(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	prop_raw, prop_exist := schema["maxProperties"]
 	if !prop_exist {
 		return nil, nil
@@ -188,7 +188,7 @@ type schemaPropertySub_maxLength struct {
 	value int
 }
 
-func newSubProp_maxLength(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_maxLength(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	prop_raw, exist := schema["maxLength"]
 	if !exist {
 		return nil, nil
@@ -218,7 +218,7 @@ type schemaPropertySub_minLength struct {
 	value int
 }
 
-func newSubProp_minLength(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_minLength(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	prop_raw, exist := schema["minLength"]
 	if !exist {
 		return nil, nil
@@ -248,7 +248,7 @@ type schemaPropertySub_maxItems struct {
 	value int
 }
 
-func newSubProp_maxItems(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_maxItems(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	prop_raw, exist := schema["maxItems"]
 	if !exist {
 		return nil, nil
@@ -278,7 +278,7 @@ type schemaPropertySub_minItems struct {
 	value int
 }
 
-func newSubProp_minItems(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_minItems(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	prop_raw, exist := schema["minItems"]
 	if !exist {
 		return nil, nil
@@ -308,7 +308,7 @@ type schemaPropertySub_pattern struct {
 	value *regexp.Regexp
 }
 
-func newSubProp_pattern(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_pattern(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	prop_raw, exist := schema["pattern"]
 	if !exist {
 		return nil, nil
@@ -344,7 +344,7 @@ type schemaPropertySub_uniqueItem struct {
 	value bool
 }
 
-func newSubProp_uniqueItem(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_uniqueItem(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	prop_raw, exist := schema["uniqueItems"]
 	if !exist {
 		return nil, nil
@@ -387,7 +387,7 @@ type schemaPropertySub_required struct {
 	value []string
 }
 
-func newSubProp_required(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_required(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	prop_raw, exist := schema["required"]
 	if !exist {
 		return nil, nil
@@ -440,7 +440,7 @@ type schemaPropertySub_dependency struct {
 	validation  map[string]*schemaProperty
 }
 
-func newSubProp_dependency(schema map[string]interface{}) (schemaPropertySub, error) {
+func newSubProp_dependency(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
 	dep, ok := schema["dependencies"]
 	if !ok {
 		return nil, nil
@@ -465,7 +465,7 @@ func newSubProp_dependency(schema map[string]interface{}) (schemaPropertySub, er
 			s.elementname[name] = val
 
 		case map[string]interface{}:
-			news := newSchemaProperty(nil, nil, "#") //FIXME
+			news := m.NewChild()
 			err := news.Recognize(depobj)
 			if err != nil {
 				return nil, ErrInvalidSchemaFormat
