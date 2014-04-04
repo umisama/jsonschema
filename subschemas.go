@@ -514,3 +514,33 @@ func (s *schemaPropertySub_dependency) IsValid(src interface{}) bool {
 
 	return true
 }
+
+// defined at 5.5.1
+type schemaPropertySub_enum struct {
+	value []interface{}
+}
+
+func newSubProp_enum(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
+	prop_raw, exist := schema["enum"]
+	if !exist {
+		return nil, nil
+	}
+
+	s := new(schemaPropertySub_enum)
+	prop, ok := prop_raw.([]interface{})
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s.value = prop
+	return s, nil
+}
+
+func (s *schemaPropertySub_enum) IsValid(src interface{}) bool {
+	for _, v := range s.value {
+		if reflect.DeepEqual(v, src) {
+			return true
+		}
+	}
+	return false
+}

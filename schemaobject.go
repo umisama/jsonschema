@@ -2,7 +2,6 @@ package jsonschema
 
 import (
 	"math"
-	"reflect"
 	"regexp"
 )
 
@@ -66,8 +65,6 @@ type schemaProperty struct {
 
 	not *schemaProperty
 
-	enum []interface{}
-
 	multipleOf float64
 
 	// validation
@@ -88,7 +85,6 @@ func newSchemaProperty(mother *schemaProperty, schema *schemaObject, original st
 		allOf:                     make([]*schemaProperty, 0),
 		anyOf:                     make([]*schemaProperty, 0),
 		oneOf:                     make([]*schemaProperty, 0),
-		enum:                      make([]interface{}, 0),
 		subprop_list:              make([]schemaPropertySub, 0),
 	}
 }
@@ -113,7 +109,6 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetAnyOf,
 		s.SetOneOf,
 		s.SetNot,
-		s.SetEnum,
 		s.SetSubProperties,
 		s.SetProperties,
 		s.SetMultipleOf,
@@ -145,6 +140,7 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 		newSubProp_uniqueItem,
 		newSubProp_required,
 		newSubProp_dependency,
+		newSubProp_enum,
 	}
 
 	for _, fn := range creater_list {
@@ -167,16 +163,6 @@ func (s *schemaProperty) SetMultipleOf(schema map[string]interface{}) error {
 			s.multipleOf = val
 		}
 	}
-	return nil
-}
-
-func (s *schemaProperty) SetEnum(schema map[string]interface{}) error {
-	if v, ok := schema["enum"]; ok {
-		if obj, ok := v.([]interface{}); ok {
-			s.enum = append(s.enum, obj...)
-		}
-	}
-
 	return nil
 }
 
@@ -408,7 +394,6 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		p.IsAnyOfValid,
 		p.IsOneOfValid,
 		p.IsNotValid,
-		p.IsEnumValid,
 		p.IsMultipleOfValid,
 		p.IsSubPropertiesValid,
 
@@ -630,19 +615,6 @@ func (s *schemaProperty) IsNotValid(src interface{}) bool {
 	}
 
 	return !s.not.IsValid(src)
-}
-
-func (s *schemaProperty) IsEnumValid(src interface{}) bool {
-	if len(s.enum) == 0 {
-		return true
-	}
-
-	for _, v := range s.enum {
-		if reflect.DeepEqual(v, src) {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *schemaProperty) IsMultipleOfValid(src interface{}) bool {
