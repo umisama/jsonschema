@@ -690,3 +690,34 @@ func (s *schemaPropertySub_oneOf) IsValid(src interface{}) bool {
 
 	return cond
 }
+
+// defined at 5.5.5
+type schemaPropertySub_not struct {
+	value *schemaProperty
+}
+
+func newSubProp_not(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
+	prop_raw, exist := schema["not"]
+	if !exist {
+		return nil, nil
+	}
+
+	prop, ok := prop_raw.(map[string]interface{})
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s := new(schemaPropertySub_not)
+	news := m.NewBrother()
+	err := news.Recognize(prop)
+	if err != nil {
+		return nil, err
+	}
+
+	s.value = news
+	return s, nil
+}
+
+func (s *schemaPropertySub_not) IsValid(src interface{}) bool {
+	return !s.value.IsValid(src)
+}

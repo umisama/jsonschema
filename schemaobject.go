@@ -60,8 +60,6 @@ type schemaProperty struct {
 	additionalItems      *schemaProperty
 	allowAdditionalItems bool
 
-	not *schemaProperty
-
 	multipleOf float64
 
 	// validation
@@ -99,7 +97,6 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetItems,
 		s.SetAdditionalProperties,
 		s.SetAdditionalItems,
-		s.SetNot,
 		s.SetSubProperties,
 		s.SetProperties,
 		s.SetMultipleOf,
@@ -135,6 +132,7 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 		newSubProp_allOf,
 		newSubProp_anyOf,
 		newSubProp_oneOf,
+		newSubProp_not,
 	}
 
 	for _, fn := range creater_list {
@@ -303,21 +301,6 @@ func (s *schemaProperty) SetAdditionalItems(schema map[string]interface{}) error
 	return nil
 }
 
-func (s *schemaProperty) SetNot(schema map[string]interface{}) error {
-	if obj, ok := schema["not"]; ok {
-		if prop, ok := obj.(map[string]interface{}); ok {
-			news := s.NewBrother()
-			err := news.Recognize(prop)
-			if err != nil {
-				return err
-			}
-			s.not = news
-		}
-	}
-
-	return nil
-}
-
 // ==validators
 func (s *schemaObject) IsValid(src interface{}) bool {
 	return s.recognized.IsValid(src)
@@ -330,7 +313,6 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		p.IsTypeValid,
 		p.IsPatternPropertiesValid,
 		p.IsItemsValid,
-		p.IsNotValid,
 		p.IsMultipleOfValid,
 		p.IsSubPropertiesValid,
 
@@ -505,14 +487,6 @@ func (s *schemaProperty) IsAdditionalItemsValid(src interface{}) bool {
 	}
 
 	return true
-}
-
-func (s *schemaProperty) IsNotValid(src interface{}) bool {
-	if s.not == nil {
-		return true
-	}
-
-	return !s.not.IsValid(src)
 }
 
 func (s *schemaProperty) IsMultipleOfValid(src interface{}) bool {
