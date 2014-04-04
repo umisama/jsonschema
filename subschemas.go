@@ -544,3 +544,149 @@ func (s *schemaPropertySub_enum) IsValid(src interface{}) bool {
 	}
 	return false
 }
+
+// defined at 5.5.3
+type schemaPropertySub_allOf struct {
+	value []*schemaProperty
+}
+
+func newSubProp_allOf(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
+	props_raw, exist := schema["allOf"]
+	if !exist {
+		return nil, nil
+	}
+
+	props, ok := props_raw.([]interface{})
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s := &schemaPropertySub_allOf{
+		value: make([]*schemaProperty, 0),
+	}
+
+	for _, prop := range props {
+		news := m.NewBrother()
+
+		prop_map, ok := prop.(map[string]interface{})
+		if !ok {
+			return nil, ErrInvalidSchemaFormat
+		}
+
+		err := news.Recognize(prop_map)
+		if err != nil {
+			return nil, err
+		}
+		s.value = append(s.value, news)
+	}
+
+	return s, nil
+}
+
+func (s *schemaPropertySub_allOf) IsValid(src interface{}) bool {
+	for _, v := range s.value {
+		if !v.IsValid(src) {
+			return false
+		}
+	}
+	return true
+}
+
+// defined at 5.5.4
+type schemaPropertySub_anyOf struct {
+	value []*schemaProperty
+}
+
+func newSubProp_anyOf(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
+	props_raw, exist := schema["anyOf"]
+	if !exist {
+		return nil, nil
+	}
+
+	props, ok := props_raw.([]interface{})
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s := &schemaPropertySub_anyOf{
+		value: make([]*schemaProperty, 0),
+	}
+
+	for _, prop := range props {
+		news := m.NewBrother()
+
+		prop_map, ok := prop.(map[string]interface{})
+		if !ok {
+			return nil, ErrInvalidSchemaFormat
+		}
+
+		err := news.Recognize(prop_map)
+		if err != nil {
+			return nil, err
+		}
+		s.value = append(s.value, news)
+	}
+
+	return s, nil
+}
+
+func (s *schemaPropertySub_anyOf) IsValid(src interface{}) bool {
+	for _, sub := range s.value {
+		if sub.IsValid(src) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// defined at 5.5.5
+type schemaPropertySub_oneOf struct {
+	value []*schemaProperty
+}
+
+func newSubProp_oneOf(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
+	props_raw, exist := schema["oneOf"]
+	if !exist {
+		return nil, nil
+	}
+
+	props, ok := props_raw.([]interface{})
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s := &schemaPropertySub_oneOf{
+		value: make([]*schemaProperty, 0),
+	}
+
+	for _, prop := range props {
+		prop_map, ok := prop.(map[string]interface{})
+		if !ok {
+			return nil, ErrInvalidSchemaFormat
+		}
+
+		news := m.NewBrother()
+		err := news.Recognize(prop_map)
+		if err != nil {
+			return nil, err
+		}
+		s.value = append(s.value, news)
+	}
+
+	return s, nil
+}
+
+func (s *schemaPropertySub_oneOf) IsValid(src interface{}) bool {
+	cond := false
+	for _, v := range s.value {
+		if !v.IsValid(src) {
+			if cond {
+				return false
+			}
+			cond = true
+		}
+	}
+
+	return cond
+}

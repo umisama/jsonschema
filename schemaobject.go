@@ -56,9 +56,6 @@ type schemaProperty struct {
 
 	isItemsOne bool
 	items      []*schemaProperty
-	allOf      []*schemaProperty
-	anyOf      []*schemaProperty
-	oneOf      []*schemaProperty
 
 	additionalItems      *schemaProperty
 	allowAdditionalItems bool
@@ -82,9 +79,6 @@ func newSchemaProperty(mother *schemaProperty, schema *schemaObject, original st
 		original:                  original,
 		allowAdditionalProperties: true,
 		allowAdditionalItems:      true,
-		allOf:                     make([]*schemaProperty, 0),
-		anyOf:                     make([]*schemaProperty, 0),
-		oneOf:                     make([]*schemaProperty, 0),
 		subprop_list:              make([]schemaPropertySub, 0),
 	}
 }
@@ -105,9 +99,6 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetItems,
 		s.SetAdditionalProperties,
 		s.SetAdditionalItems,
-		s.SetAllOf,
-		s.SetAnyOf,
-		s.SetOneOf,
 		s.SetNot,
 		s.SetSubProperties,
 		s.SetProperties,
@@ -141,6 +132,9 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 		newSubProp_required,
 		newSubProp_dependency,
 		newSubProp_enum,
+		newSubProp_allOf,
+		newSubProp_anyOf,
+		newSubProp_oneOf,
 	}
 
 	for _, fn := range creater_list {
@@ -309,60 +303,6 @@ func (s *schemaProperty) SetAdditionalItems(schema map[string]interface{}) error
 	return nil
 }
 
-func (s *schemaProperty) SetAllOf(schema map[string]interface{}) error {
-	if obj, ok := schema["allOf"]; ok {
-		if prop, ok := obj.([]interface{}); ok {
-			for _, v := range prop {
-				if obj2, ok := v.(map[string]interface{}); ok {
-					news := s.NewBrother()
-					err := news.Recognize(obj2)
-					if err != nil {
-						return err
-					}
-					s.allOf = append(s.allOf, news)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (s *schemaProperty) SetAnyOf(schema map[string]interface{}) error {
-	if obj, ok := schema["anyOf"]; ok {
-		if prop, ok := obj.([]interface{}); ok {
-			for _, v := range prop {
-				if obj2, ok := v.(map[string]interface{}); ok {
-					news := s.NewBrother()
-					err := news.Recognize(obj2)
-					if err != nil {
-						return err
-					}
-					s.anyOf = append(s.anyOf, news)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (s *schemaProperty) SetOneOf(schema map[string]interface{}) error {
-	if obj, ok := schema["oneOf"]; ok {
-		if prop, ok := obj.([]interface{}); ok {
-			for _, v := range prop {
-				if obj2, ok := v.(map[string]interface{}); ok {
-					news := s.NewBrother()
-					err := news.Recognize(obj2)
-					if err != nil {
-						return err
-					}
-					s.oneOf = append(s.oneOf, news)
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func (s *schemaProperty) SetNot(schema map[string]interface{}) error {
 	if obj, ok := schema["not"]; ok {
 		if prop, ok := obj.(map[string]interface{}); ok {
@@ -390,9 +330,6 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		p.IsTypeValid,
 		p.IsPatternPropertiesValid,
 		p.IsItemsValid,
-		p.IsAllOfValid,
-		p.IsAnyOfValid,
-		p.IsOneOfValid,
 		p.IsNotValid,
 		p.IsMultipleOfValid,
 		p.IsSubPropertiesValid,
@@ -568,45 +505,6 @@ func (s *schemaProperty) IsAdditionalItemsValid(src interface{}) bool {
 	}
 
 	return true
-}
-
-func (s *schemaProperty) IsAllOfValid(src interface{}) bool {
-	for _, subs := range s.allOf {
-		if !subs.IsValid(src) {
-			return false
-		}
-	}
-	return true
-}
-
-func (s *schemaProperty) IsAnyOfValid(src interface{}) bool {
-	if len(s.anyOf) == 0 {
-		return true
-	}
-
-	for _, subs := range s.anyOf {
-		if subs.IsValid(src) {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *schemaProperty) IsOneOfValid(src interface{}) bool {
-	if len(s.oneOf) == 0 {
-		return true
-	}
-
-	cond := false
-	for _, subs := range s.oneOf {
-		if !subs.IsValid(src) {
-			if cond {
-				return false
-			}
-			cond = true
-		}
-	}
-	return cond
 }
 
 func (s *schemaProperty) IsNotValid(src interface{}) bool {
