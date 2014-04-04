@@ -1,6 +1,7 @@
 package jsonschema
 
 import (
+	"math"
 	"reflect"
 	"regexp"
 )
@@ -720,4 +721,34 @@ func newSubProp_not(schema map[string]interface{}, m *schemaProperty) (schemaPro
 
 func (s *schemaPropertySub_not) IsValid(src interface{}) bool {
 	return !s.value.IsValid(src)
+}
+
+// defined at 5.5.5
+type schemaPropertySub_multipleOf struct {
+	value float64
+}
+
+func newSubProp_multipleOf(schema map[string]interface{}, m *schemaProperty) (schemaPropertySub, error) {
+	prop_raw, exist := schema["multipleOf"]
+	if !exist {
+		return nil, nil
+	}
+
+	prop, ok := prop_raw.(float64)
+	if !ok {
+		return nil, ErrInvalidSchemaFormat
+	}
+
+	s := new(schemaPropertySub_multipleOf)
+	s.value = prop
+	return s, nil
+}
+
+func (s *schemaPropertySub_multipleOf) IsValid(src interface{}) bool {
+	val, ret := src.(float64)
+	if !ret {
+		return true
+	}
+
+	return math.Mod(val*10e10, s.value*10e10) == 0
 }

@@ -1,7 +1,6 @@
 package jsonschema
 
 import (
-	"math"
 	"regexp"
 )
 
@@ -60,8 +59,6 @@ type schemaProperty struct {
 	additionalItems      *schemaProperty
 	allowAdditionalItems bool
 
-	multipleOf float64
-
 	// validation
 	checked []string
 }
@@ -99,7 +96,6 @@ func (s *schemaProperty) Recognize(schema map[string]interface{}) error {
 		s.SetAdditionalItems,
 		s.SetSubProperties,
 		s.SetProperties,
-		s.SetMultipleOf,
 	}
 
 	for _, fn := range fnlist {
@@ -133,6 +129,7 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 		newSubProp_anyOf,
 		newSubProp_oneOf,
 		newSubProp_not,
+		newSubProp_multipleOf,
 	}
 
 	for _, fn := range creater_list {
@@ -146,15 +143,6 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 		}
 	}
 
-	return nil
-}
-
-func (s *schemaProperty) SetMultipleOf(schema map[string]interface{}) error {
-	if v, ok := schema["multipleOf"]; ok {
-		if val, ok := v.(float64); ok {
-			s.multipleOf = val
-		}
-	}
 	return nil
 }
 
@@ -313,7 +301,6 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 		p.IsTypeValid,
 		p.IsPatternPropertiesValid,
 		p.IsItemsValid,
-		p.IsMultipleOfValid,
 		p.IsSubPropertiesValid,
 
 		// fixed order
@@ -486,14 +473,5 @@ func (s *schemaProperty) IsAdditionalItemsValid(src interface{}) bool {
 		}
 	}
 
-	return true
-}
-
-func (s *schemaProperty) IsMultipleOfValid(src interface{}) bool {
-	if s.multipleOf != 0 {
-		if val, ok := src.(float64); ok {
-			return (math.Mod(val*10e10, s.multipleOf*10e10) == 0)
-		}
-	}
 	return true
 }
