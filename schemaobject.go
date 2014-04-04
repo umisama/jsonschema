@@ -45,17 +45,16 @@ type schemaProperty struct {
 	original     string
 
 	// properties
-	jsontype          []JsonType
-	properties        map[string]*schemaProperty
-	patternProperties map[string]*schemaProperty
-	subprop_list      []schemaPropertySub
+	jsontype []JsonType
 
+	properties                map[string]*schemaProperty
+	patternProperties         map[string]*schemaProperty
+	subprop_list              []schemaPropertySub
 	additionalProperties      *schemaProperty
 	allowAdditionalProperties bool
 
-	isItemsOne bool
-	items      []*schemaProperty
-
+	isItemsOne           bool
+	items                []*schemaProperty
 	additionalItems      *schemaProperty
 	allowAdditionalItems bool
 
@@ -147,145 +146,196 @@ func (s *schemaProperty) SetSubProperties(schema map[string]interface{}) error {
 }
 
 func (s *schemaProperty) SetRef(schema map[string]interface{}) error {
-	if v, ok := schema["$ref"]; ok {
-		if path, ok := v.(string); ok {
-			news := s.NewBrother()
-			err := s.schemaobject.refResolver.GetReferencedObject(path, news)
-			if err != nil {
-				return err
-			}
-			*s = *news
+	v, ok := schema["$ref"]
+	if !ok {
+		return nil
+	}
 
-			return errFoundReference
+	if path, ok := v.(string); ok {
+		news := s.NewBrother()
+		err := s.schemaobject.refResolver.GetReferencedObject(path, news)
+		if err != nil {
+			return err
 		}
+		*s = *news
+
+		return errFoundReference
 	}
 	return nil
 }
 
 func (s *schemaProperty) SetJsonTypes(schema map[string]interface{}) error {
-	if v, ok := schema["type"]; ok {
-		switch typename := v.(type) {
-		case string:
-			type_raw, err := GetJsonType(typename)
+	v, ok := schema["type"]
+	if !ok {
+		s.jsontype = append(s.jsontype, JsonType_Any)
+		return nil
+	}
+
+	switch typename := v.(type) {
+	case string:
+		type_raw, err := GetJsonType(typename)
+		if err != nil {
+			return err
+		}
+
+		s.jsontype = append(s.jsontype, type_raw)
+
+	case []interface{}:
+		for _, obj := range typename {
+			str, ok := obj.(string)
+			if !ok {
+				return ErrInvalidSchemaFormat
+			}
+
+			type_raw, err := GetJsonType(str)
 			if err != nil {
 				return err
 			}
 
 			s.jsontype = append(s.jsontype, type_raw)
-		case []interface{}:
-			for _, obj := range typename {
-				if str, ok := obj.(string); ok {
-					type_raw, err := GetJsonType(str)
-					if err != nil {
-						return err
-					}
-
-					s.jsontype = append(s.jsontype, type_raw)
-				}
-			}
-		default:
-			return ErrInvalidSchemaFormat
 		}
-	} else {
-		s.jsontype = append(s.jsontype, JsonType_Any)
+	default:
+		return ErrInvalidSchemaFormat
 	}
 
 	return nil
 }
 
 func (s *schemaProperty) SetProperties(schema map[string]interface{}) error {
-	if obj, ok := schema["properties"]; ok {
-		if obj2, ok := obj.(map[string]interface{}); ok {
-			for k, v := range obj2 {
-				if obj3, ok := v.(map[string]interface{}); ok {
-					news := s.NewChild()
-					err := news.Recognize(obj3)
-					if err != nil {
-						return err
-					}
-					s.properties[k] = news
-				}
-			}
+	obj, ok := schema["properties"]
+	if !ok {
+		return nil
+	}
+
+	obj2, ok := obj.(map[string]interface{})
+	if !ok {
+		return ErrInvalidSchemaFormat
+	}
+
+	for k, v := range obj2 {
+		obj3, ok := v.(map[string]interface{})
+		if !ok {
+			return ErrInvalidSchemaFormat
 		}
+
+		news := s.NewChild()
+		err := news.Recognize(obj3)
+		if err != nil {
+			return err
+		}
+
+		s.properties[k] = news
 	}
 
 	return nil
 }
 
 func (s *schemaProperty) SetPatternProperties(schema map[string]interface{}) error {
-	if obj, ok := schema["patternProperties"]; ok {
-		if obj2, ok := obj.(map[string]interface{}); ok {
-			for k, v := range obj2 {
-				if obj3, ok := v.(map[string]interface{}); ok {
-					news := s.NewChild()
-					err := news.Recognize(obj3)
-					if err != nil {
-						return err
-					}
-					s.patternProperties[k] = news
-				}
-			}
+	obj, ok := schema["patternProperties"]
+	if !ok {
+		return nil
+	}
+
+	obj2, ok := obj.(map[string]interface{})
+	if !ok {
+		return ErrInvalidSchemaFormat
+	}
+
+	for k, v := range obj2 {
+		obj3, ok := v.(map[string]interface{})
+		if !ok {
+			return ErrInvalidSchemaFormat
 		}
+
+		news := s.NewChild()
+		err := news.Recognize(obj3)
+		if err != nil {
+			return err
+		}
+
+		s.patternProperties[k] = news
 	}
 
 	return nil
 }
 
 func (s *schemaProperty) SetItems(schema map[string]interface{}) error {
-	if obj, ok := schema["items"]; ok {
-		if obj2, ok := obj.(map[string]interface{}); ok {
+	obj, ok := schema["items"]
+	if !ok {
+		return nil
+	}
+	if obj2, ok := obj.(map[string]interface{}); ok {
+		news := s.NewChild()
+		err := news.Recognize(obj2)
+		if err != nil {
+			return err
+		}
+
+		s.isItemsOne = true
+		s.items = append(s.items, news)
+	} else if obj2, ok := obj.([]interface{}); ok {
+		for _, obj3 := range obj2 {
+			obj4, ok := obj3.(map[string]interface{})
+			if !ok {
+				return ErrInvalidSchemaFormat
+			}
+
 			news := s.NewChild()
-			err := news.Recognize(obj2)
+			err := news.Recognize(obj4)
 			if err != nil {
 				return err
 			}
-			s.isItemsOne = true
+
 			s.items = append(s.items, news)
-		} else if obj2, ok := obj.([]interface{}); ok {
-			for _, obj3 := range obj2 {
-				if obj4, ok := obj3.(map[string]interface{}); ok {
-					news := s.NewChild()
-					err := news.Recognize(obj4)
-					if err != nil {
-						return err
-					}
-					s.items = append(s.items, news)
-				}
-			}
 		}
 	}
+
 	return nil
 }
 
 func (s *schemaProperty) SetAdditionalProperties(schema map[string]interface{}) error {
-	if obj, ok := schema["additionalProperties"]; ok {
-		if prop, ok := obj.(map[string]interface{}); ok {
-			news := s.NewChild()
-			err := news.Recognize(prop)
-			if err != nil {
-				return err
-			}
-			s.additionalProperties = news
-		} else if allow, ok := obj.(bool); ok {
-			s.allowAdditionalProperties = allow
-		}
+	obj, ok := schema["additionalProperties"]
+	if !ok {
+		return nil
 	}
+
+	switch prop := obj.(type) {
+	case map[string]interface{}:
+		news := s.NewChild()
+		err := news.Recognize(prop)
+		if err != nil {
+			return err
+		}
+
+		s.additionalProperties = news
+
+	case bool:
+		s.allowAdditionalProperties = prop
+	}
+
 	return nil
 }
 
 func (s *schemaProperty) SetAdditionalItems(schema map[string]interface{}) error {
-	if obj, ok := schema["additionalItems"]; ok {
-		if prop, ok := obj.(map[string]interface{}); ok {
-			news := s.NewChild()
-			err := news.Recognize(prop)
-			if err != nil {
-				return err
-			}
-			s.additionalItems = news
-		} else if allow, ok := obj.(bool); ok {
-			s.allowAdditionalItems = allow
-		}
+	obj, ok := schema["additionalItems"]
+	if !ok {
+		return nil
 	}
+
+	switch prop := obj.(type) {
+	case map[string]interface{}:
+		news := s.NewChild()
+		err := news.Recognize(prop)
+		if err != nil {
+			return err
+		}
+
+		s.additionalItems = news
+
+	case bool:
+		s.allowAdditionalItems = prop
+	}
+
 	return nil
 }
 
@@ -299,8 +349,8 @@ func (p *schemaProperty) IsValid(src interface{}) bool {
 
 	fnlist := []func(interface{}) bool{
 		p.IsTypeValid,
-		p.IsPatternPropertiesValid,
 		p.IsItemsValid,
+		p.IsPatternPropertiesValid,
 		p.IsSubPropertiesValid,
 
 		// fixed order
@@ -340,14 +390,17 @@ func (p *schemaProperty) IsTypeValid(src interface{}) bool {
 
 //--
 func (p *schemaProperty) IsPropertiesValid(src interface{}) bool {
-	if obj, ok := src.(map[string]interface{}); ok {
-		for k, v := range p.properties {
-			if prop, ok := obj[k]; ok {
-				res := v.IsValid(prop)
-				p.checked = append(p.checked, k)
-				if !res {
-					return false
-				}
+	obj, ok := src.(map[string]interface{})
+	if !ok {
+		return true
+	}
+
+	for k, v := range p.properties {
+		if prop, ok := obj[k]; ok {
+			res := v.IsValid(prop)
+			p.checked = append(p.checked, k)
+			if !res {
+				return false
 			}
 		}
 	}
@@ -383,20 +436,23 @@ func (p *schemaProperty) IsItemsValid(src interface{}) bool {
 }
 
 func (p *schemaProperty) IsPatternPropertiesValid(src interface{}) bool {
-	if obj, ok := src.(map[string]interface{}); ok {
-		for pat, child := range p.patternProperties {
-			re, err := regexp.Compile(pat)
-			if err != nil {
-				return false
-			}
+	obj, ok := src.(map[string]interface{})
+	if !ok {
+		return true
+	}
 
-			for k, v := range obj {
-				if re.MatchString(k) {
-					res := child.IsValid(v)
-					p.checked = append(p.checked, k)
-					if !res {
-						return false
-					}
+	for pat, child := range p.patternProperties {
+		re, err := regexp.Compile(pat)
+		if err != nil {
+			return false
+		}
+
+		for k, v := range obj {
+			if re.MatchString(k) {
+				res := child.IsValid(v)
+				p.checked = append(p.checked, k)
+				if !res {
+					return false
 				}
 			}
 		}
